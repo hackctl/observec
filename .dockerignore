@@ -1,0 +1,8 @@
+observecEngine/target/
+
+.git/
+
+rough
+.DS_Store
+
+observecInterface/node_modules/

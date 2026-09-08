@@ -1,0 +1,19 @@
+volumes:
+  observec:
+    name: observec
+
+services:
+  observec:
+    privileged: true
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: observec
+    ports:
+      - "8080:8080"
+      - "8081:8081"
+      - "9090:9090"
+      - "9115:9115"
+      - "9093:9093"
+    volumes:
+      - observec:/observec/observecData

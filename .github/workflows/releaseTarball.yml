@@ -1,0 +1,104 @@
+name: Release Tarball
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag to attach the tarballs to (e.g. v1.0.0)"
+        required: true
+
+env:
+  PROM_VER: "2.55.1"
+  BB_VER: "0.25.0"
+  AM_VER: "0.27.0"
+  GROUP_PATH: "com/hacktcl/observec/engine/1.0.0-SNAPSHOT"
+
+jobs:
+  tarball:
+    name: Build release tarball (${{ matrix.arch }})
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: read
+    strategy:
+      matrix:
+        arch: [amd64, arm64]
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17 (for authenticated Packages download)
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          server-id: github
+          settings-path: ${{ github.workspace }}
+
+      - name: Download observec jar from GitHub Packages
+        run: |
+          MVN="mvn -B -s $GITHUB_WORKSPACE/settings.xml"
+          $MVN org.apache.maven.plugins:maven-dependency-plugin:3.6.1:get \
+            -Dartifact=com.hacktcl.observec:engine:1.0.0-SNAPSHOT \
+            -DremoteRepositories=github::default::https://maven.pkg.github.com/hackctl/observec
+          JAR="$(ls -t ~/.m2/repository/${{ env.GROUP_PATH }}/engine-*.jar | grep -v sources | head -1)"
+          echo "Resolved jar: $JAR"
+          mkdir -p staging/observec
+          cp "$JAR" staging/observec/observec.jar
+          ls -lh staging/observec/
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Download Prometheus-stack binaries (${{ matrix.arch }})
+        run: |
+          mkdir -p staging/observec/bin
+          ARCH="${{ matrix.arch }}"
+          dl_extract() {
+            echo "Fetching $1"
+            curl -fsSL "$1" -o /tmp/pkg.tgz
+            tar -xzf /tmp/pkg.tgz -O "$2" > "staging/observec/bin/$3"
+            chmod +x "staging/observec/bin/$3"
+            rm -f /tmp/pkg.tgz
+          }
+          dl_extract "https://github.com/prometheus/prometheus/releases/download/v${{ env.PROM_VER }}/prometheus-${{ env.PROM_VER }}.linux-${ARCH}.tar.gz" \
+            "prometheus-${{ env.PROM_VER }}.linux-${ARCH}/prometheus" "prometheus"
+          dl_extract "https://github.com/prometheus/prometheus/releases/download/v${{ env.PROM_VER }}/prometheus-${{ env.PROM_VER }}.linux-${ARCH}.tar.gz" \
+            "prometheus-${{ env.PROM_VER }}.linux-${ARCH}/promtool" "promtool"
+          dl_extract "https://github.com/prometheus/blackbox_exporter/releases/download/v${{ env.BB_VER }}/blackbox_exporter-${{ env.BB_VER }}.linux-${ARCH}.tar.gz" \
+            "blackbox_exporter-${{ env.BB_VER }}.linux-${ARCH}/blackbox_exporter" "blackbox_exporter"
+          dl_extract "https://github.com/prometheus/alertmanager/releases/download/v${{ env.AM_VER }}/alertmanager-${{ env.AM_VER }}.linux-${ARCH}.tar.gz" \
+            "alertmanager-${{ env.AM_VER }}.linux-${ARCH}/alertmanager" "alertmanager"
+          dl_extract "https://github.com/prometheus/alertmanager/releases/download/v${{ env.AM_VER }}/alertmanager-${{ env.AM_VER }}.linux-${ARCH}.tar.gz" \
+            "alertmanager-${{ env.AM_VER }}.linux-${ARCH}/amtool" "amtool"
+          ls -lh staging/observec/bin/
+
+      - name: Assemble tarball (seed dirs + launcher)
+        run: |
+          D=staging/observec/observecData
+          mkdir -p \
+            "$D/blackbox/blackboxData" \
+            "$D/blackbox/tls" \
+            "$D/prometheus/prometheusData" \
+            "$D/prometheus/serviceDiscoveryFiles" \
+            "$D/prometheus/ruleFiles/monitors" \
+            "$D/prometheus/kubeConfigs" \
+            "$D/alertmanager/alertmanagerData" \
+            "$D/monitors" \
+            "$D/thanos"
+          touch "$D/.seedkeep"
+          cp packaging/run.sh staging/observec/run.sh
+          chmod +x staging/observec/run.sh staging/observec/bin/*
+          find staging/observec -maxdepth 2 | sort
+          tar -czf "observec-linux-${{ matrix.arch }}.tar.gz" -C staging observec
+          ls -lh "observec-linux-${{ matrix.arch }}.tar.gz"
+          tar -tzf "observec-linux-${{ matrix.arch }}.tar.gz" | sort
+
+      - name: Attach tarball to GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: observec-linux-${{ matrix.arch }}.tar.gz
+          tag_name: ${{ inputs.tag || github.ref_name }}
