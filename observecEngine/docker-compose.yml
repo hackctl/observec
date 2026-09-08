@@ -1,0 +1,37 @@
+networks:
+  observecNetwork:
+    driver: bridge
+  observecDatabaseNetwork:
+    external: true
+
+services:
+   compilePackage:
+     image: maven:3.8.4-openjdk-17 
+     container_name: observecCompilerContainer
+     volumes:
+       - ./:/app/
+       - ~/.m2:/root/.m2
+     working_dir: /app
+     command: mvn clean package
+     networks:
+       - observecNetwork
+       - observecDatabaseNetwork
+     profiles:
+      - "compile"
+      
+   runPackage: 
+     image: eclipse-temurin:17-jre
+     container_name: observecRunnerContainer
+     volumes:
+       - ./target/org.hacktcl.observec.engine.jar:/app/org.hacktcl.observec.engine.jar
+     working_dir: /app
+     command: java -jar org.hacktcl.observec.engine.jar
+     ports:
+       - "8080:8080"
+     profiles:
+       - "run"
+     networks:
+       - observecNetwork
+       - observecDatabaseNetwork
+
+    

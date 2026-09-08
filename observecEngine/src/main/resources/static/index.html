@@ -1,0 +1,1433 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>observec</title>
+  <link rel="icon" type="image/png" href="/observec.png?v=20260906w" />
+  <link rel="stylesheet" href="/styles.css?v=20260906v" />
+  <script>
+    try {
+      if (localStorage.getItem("observec-theme") === "light") {
+        document.documentElement.classList.add("light");
+      }
+    } catch (e) {}
+  </script>
+</head>
+<body>
+  <header class="header">
+    <div class="header-brand">
+      <span class="crumb">observec</span>
+    </div>
+    <div class="header-actions">
+      <button type="button" id="theme-toggle" class="icon-btn" title="Toggle black / white theme">
+        <svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 1 0 18Z" fill="currentColor" stroke="none"/></svg>
+      </button>
+      <div id="user-menu-wrap" class="user-menu-wrap hidden">
+        <button type="button" id="user-dp" class="user-dp" title="User menu">
+          <span id="user-initials">A</span>
+        </button>
+        <div id="user-dropdown" class="user-dropdown hidden">
+          <div class="dropdown-header">
+            <span id="dropdown-username" class="mono" style="font-weight:600;"></span>
+            <span id="dropdown-email" class="text-muted" style="font-size:11px;"></span>
+          </div>
+          <button type="button" id="dropdown-switch" class="dropdown-item">Sign in as other user</button>
+          <button type="button" id="dropdown-logout" class="dropdown-item danger">Sign out</button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <div class="layout" id="layout">
+    <!-- sidebar -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-content">
+        <nav class="sidebar-nav">
+
+          <div class="nav-group" data-nav-group="monitors" data-open="true">
+            <button type="button" class="nav-item active" data-component="monitors" title="Monitors" aria-expanded="true">
+              <svg class="icon" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="13" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+              <span class="nav-label">Monitors</span>
+              <svg class="icon chevron" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg>
+            </button>
+
+            <div class="nav-sub" data-component-sub="monitors">
+              <div class="nav-sub-clip">
+                <div class="nav-sub-inner">
+                  <button type="button" class="nav-subitem active" data-section="section-monitors">Overview</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="nav-group" data-nav-group="blackbox" data-open="true">
+            <button type="button" class="nav-item" data-component="blackbox" title="Blackbox" aria-expanded="true">
+              <svg class="icon" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="14" rx="2"/><path d="M7 20h10M9 8h6M9 12h6"/></svg>
+              <span class="nav-label">Blackbox</span>
+              <span id="blackbox-dot" class="dot bad" title="Stopped"></span>
+              <svg class="icon chevron" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg>
+            </button>
+
+            <div class="nav-sub" data-component-sub="blackbox">
+              <div class="nav-sub-clip">
+                <div class="nav-sub-inner">
+                  <button type="button" class="nav-subitem active" data-section="section-modules">Modules</button>
+                  <button type="button" class="nav-subitem" data-section="section-probes">Recent Probes</button>
+                  <button type="button" class="nav-subitem" data-section="section-logs">Blackbox Logs</button>
+                  <button type="button" class="nav-subitem" data-section="section-config">Config</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="nav-group" data-nav-group="prometheus" data-open="true">
+            <button type="button" class="nav-item" data-component="prometheus" title="Prometheus" aria-expanded="true">
+              <svg class="icon" viewBox="0 0 24 24"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg>
+              <span class="nav-label">Prometheus</span>
+              <span id="prometheus-dot" class="dot bad" title="Stopped"></span>
+              <svg class="icon chevron" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg>
+            </button>
+
+            <div class="nav-sub" data-component-sub="prometheus">
+              <div class="nav-sub-clip">
+                <div class="nav-sub-inner">
+                  <button type="button" class="nav-subitem" data-section="section-jobs">Jobs</button>
+                  <button type="button" class="nav-subitem" data-section="section-rules">Rule Files</button>
+                  <button type="button" class="nav-subitem" data-section="section-services">Service Files</button>
+                  <button type="button" class="nav-subitem" data-section="section-prom-logs">Prometheus Logs</button>
+                  <button type="button" class="nav-subitem" data-section="section-prom-config">Config</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="nav-group" data-nav-group="alertmanager" data-open="true">
+            <button type="button" class="nav-item" data-component="alertmanager" title="Alertmanager" aria-expanded="true">
+              <svg class="icon" viewBox="0 0 24 24"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
+              <span class="nav-label">Alertmanager</span>
+              <span id="alertmanager-dot" class="dot bad" title="Stopped"></span>
+              <svg class="icon chevron" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg>
+            </button>
+
+            <div class="nav-sub" data-component-sub="alertmanager">
+              <div class="nav-sub-clip">
+                <div class="nav-sub-inner">
+                  <button type="button" class="nav-subitem" data-section="section-am-receivers">Receivers</button>
+                  <button type="button" class="nav-subitem" data-section="section-am-routes">Routes</button>
+                  <button type="button" class="nav-subitem" data-section="section-am-inhibit-rules">Inhibit Rules</button>
+                  <button type="button" class="nav-subitem" data-section="section-am-notifications">Notifications</button>
+                  <button type="button" class="nav-subitem" data-section="section-am-logs">Alertmanager Logs</button>
+                  <button type="button" class="nav-subitem" data-section="section-am-config">Config</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="nav-group" data-nav-group="changelog" data-open="true">
+            <button type="button" class="nav-item" data-component="changelog" title="Changelog" aria-expanded="true">
+              <svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/><path d="M16 12a4 4 0 0 0-4-4"/></svg>
+              <span class="nav-label">Changelog</span>
+              <svg class="icon chevron" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg>
+            </button>
+            <div class="nav-sub" data-component-sub="changelog">
+              <div class="nav-sub-clip">
+                <div class="nav-sub-inner">
+                  <button type="button" class="nav-subitem" data-section="section-changelog">History</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="nav-group hidden" id="access-nav-group" data-nav-group="access" data-open="true">
+            <button type="button" class="nav-item" data-component="access" title="Access" aria-expanded="true">
+              <svg class="icon" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/><path d="M20 8v6M23 11v0M17 11v0"/></svg>
+              <span class="nav-label">Access</span>
+              <svg class="icon chevron" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg>
+            </button>
+            <div class="nav-sub" data-component-sub="access">
+              <div class="nav-sub-clip">
+                <div class="nav-sub-inner">
+                  <button type="button" class="nav-subitem" data-section="section-users">Users</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </nav>
+      </div>
+
+      <div class="sidebar-footer">
+        <span id="engine-status" class="badge muted">checking...</span>
+      </div>
+    </aside>
+
+    <!-- content -->
+    <main class="content">
+      <!-- Monitors (Uptime Kuma style) -->
+      <div id="monitors-view">
+        <div id="section-monitors" class="monitors-overview">
+          <div class="monitors-header">
+            <div class="monitors-title">
+              <h2 class="panel-heading">Monitors</h2>
+            </div>
+            <div class="toolbar-spacer"></div>
+            <div class="search-wrap">
+              <svg class="icon search-icon" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+              <input id="monitor-search" class="input search" type="search" placeholder="Search monitors" autocomplete="off" />
+            </div>
+            <div class="monitor-filters">
+              <button type="button" class="chip active" data-monitor-filter="">All</button>
+              <button type="button" class="chip" data-monitor-filter="up">Up</button>
+              <button type="button" class="chip" data-monitor-filter="down">Down</button>
+              <button type="button" class="chip" data-monitor-filter="paused">Paused</button>
+            </div>
+            <select id="monitor-range" class="select" style="width:130px; height:30px; font-size:12.5px;">
+              <option value="1h">Last 1 hour</option>
+              <option value="24h" selected>Last 24 hours</option>
+              <option value="7d">Last 7 days</option>
+              <option value="30d">Last 30 days</option>
+            </select>
+            <button class="btn ghost icon-only" id="monitors-refresh-btn" title="Refresh">
+              <svg class="icon" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg>
+            </button>
+            <button class="btn primary icon-only" id="add-monitor-btn" title="New Monitor">
+              <svg class="icon" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+            </button>
+          </div>
+
+          <div id="monitors-empty" class="monitors-empty hidden">
+            <div class="empty-icon">
+              <svg viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+            </div>
+            <h3>No monitors yet</h3>
+            <p class="text-muted">Create your first monitor to start checking uptime in one click. Blackbox, Prometheus jobs and alerts are wired automatically.</p>
+            <button class="btn primary" id="empty-add-monitor-btn">Create Monitor</button>
+          </div>
+
+          <div id="monitors-list" class="table-card">
+            <table class="data-table" id="monitors-table">
+              <thead>
+                <tr>
+                  <th>Monitor</th>
+                  <th>Type</th>
+                  <th>Endpoint</th>
+                  <th>Response</th>
+                  <th>Last Fail</th>
+                  <th>Last Success</th>
+                  <th>Uptime</th>
+                  <th>SSL Expires</th>
+                  <th class="col-actions">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="monitors-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div id="blackbox-view" class="hidden">
+
+        <!-- modules -->
+        <div id="section-modules" class="modules-part">
+          <div class="section-header">
+            <h2 class="panel-heading">Modules</h2>
+
+            <div class="toolbar-spacer"></div>
+
+            <div class="search-wrap">
+              <svg class="icon search-icon" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+              <input id="module-search" class="input search" type="search" placeholder="Search" autocomplete="off" />
+            </div>
+
+            <button class="btn destructive icon-only hidden" id="delete-selected-btn" title="Delete selected">
+              <svg class="icon" viewBox="0 0 24 24"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg>
+            </button>
+            <label class="switch-wrap" title="Enable / Disable blackbox exporter"><input type="checkbox" class="blackbox-toggle-btn"><span class="switch"></span></label>
+            <button class="btn ghost icon-only" id="reload-btn" title="Reload blackbox exporter">
+              <svg class="icon" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg>
+            </button>
+            <button class="btn primary icon-only" id="add-module-btn" title="Add module">
+              <svg class="icon" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+            </button>
+          </div>
+
+          <div class="table-card">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th class="col-check"><input type="checkbox" id="select-all" aria-label="Select all" /></th>
+                  <th class="sortable" data-sort="name">Module<span class="arrow" data-arrow="name"></span></th>
+                  <th class="sortable" data-sort="prober">Prober<span class="arrow" data-arrow="prober"></span></th>
+                  <th class="sortable" data-sort="method">Method<span class="arrow" data-arrow="method"></span></th>
+                  <th class="sortable" data-sort="timeout">Timeout<span class="arrow" data-arrow="timeout"></span></th>
+                  <th class="col-actions">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="module-tbody"></tbody>
+            </table>
+          </div>
+
+          <div class="table-footer">
+            <span id="table-count" class="text-muted"></span>
+            <div class="pager">
+              <button type="button" class="icon-btn" id="page-prev" title="Previous page">
+                <svg class="icon" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></svg>
+              </button>
+              <span id="page-numbers" class="pager-pages"></span>
+              <button type="button" class="icon-btn" id="page-next" title="Next page">
+                <svg class="icon" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- recent probes -->
+        <div id="section-probes" class="probes-panel hidden">
+          <div class="section-header">
+            <h2 class="panel-heading">Recent Probes</h2>
+
+            <div class="toolbar-spacer"></div>
+
+            <div class="search-wrap probe-search">
+              <svg class="icon search-icon" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+              <input id="probe-search" class="input search" type="search" placeholder="Search" autocomplete="off" />
+            </div>
+            <button type="button" class="chip active" data-result-filter="">All</button>
+            <button type="button" class="chip" data-result-filter="Success">Success</button>
+            <button type="button" class="chip" data-result-filter="Failure">Failed</button>
+          </div>
+          <div class="probes-scroll">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Module</th>
+                  <th>Target</th>
+                  <th>Result</th>
+                  <th class="col-actions">Logs</th>
+                </tr>
+              </thead>
+              <tbody id="probes-tbody"></tbody>
+            </table>
+          </div>
+
+          <div class="probes-footer">
+            <div class="pager">
+              <button type="button" class="icon-btn" id="probe-page-prev" title="Previous page">
+                <svg class="icon" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></svg>
+              </button>
+              <span id="probe-page-numbers" class="pager-pages"></span>
+              <button type="button" class="icon-btn" id="probe-page-next" title="Next page">
+                <svg class="icon" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- blackbox logs -->
+        <div id="section-logs" class="logs-panel hidden">
+          <div class="section-header">
+            <h2 class="panel-heading">Blackbox Logs</h2>
+            <div class="header-spacer"></div>
+            <label class="switch-wrap" title="Enable / Disable blackbox exporter"><input type="checkbox" class="blackbox-toggle-btn"><span class="switch"></span></label>
+            <button class="btn ghost icon-only blackbox-reload-btn" title="Reload blackbox exporter">
+              <svg class="icon" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg>
+            </button>
+            <div class="search-wrap logs-search">
+              <svg class="icon search-icon" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+              <input id="log-search" class="input search" type="search" placeholder="Search" autocomplete="off" />
+            </div>
+            <span id="log-match-count" class="text-muted log-count"></span>
+            <button type="button" class="icon-btn" id="log-oldest" title="Jump to oldest">
+              <svg class="icon" viewBox="0 0 24 24"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
+            </button>
+            <button type="button" class="icon-btn" id="log-latest" title="Jump to latest">
+              <svg class="icon" viewBox="0 0 24 24"><path d="M12 5v14M19 12l-7 7-7-7"/></svg>
+            </button>
+            <button type="button" class="icon-btn" id="log-prev" title="Previous match (Shift+Enter)" disabled>
+              <svg class="icon" viewBox="0 0 24 24"><path d="m18 15-6-6-6 6"/></svg>
+            </button>
+            <button type="button" class="icon-btn" id="log-next" title="Next match (Enter)" disabled>
+              <svg class="icon" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg>
+            </button>
+          </div>
+          <div class="logs-shell">
+            <div class="logs-card">
+              <div id="logs-body" class="logs-body mono"></div>
+            </div>
+          </div>
+        </div>
+
+    <!-- config section -->
+    <div id="section-config" class="config-part hidden">
+      <div class="section-header config-header">
+        <h2 class="panel-heading">Config</h2>
+        <span class="config-filename mono">blackboxConfig.yml</span>
+        <div class="toolbar-spacer"></div>
+        <label class="switch-wrap" title="Enable / Disable blackbox exporter"><input type="checkbox" class="blackbox-toggle-btn"><span class="switch"></span></label>
+        <button class="btn ghost icon-only blackbox-reload-btn" title="Reload blackbox exporter">
+          <svg class="icon" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg>
+        </button>
+        <button type="button" class="btn ghost sm" id="config-copy">Copy</button>
+      </div>
+      <div class="config-shell">
+        <div class="config-card">
+          <pre id="config-yaml" class="yaml-view mono" spellcheck="false"></pre>
+        </div>
+      </div>
+    </div>
+
+      </div>
+
+      <div id="prometheus-view" class="hidden">
+
+        <!-- scrape jobs -->
+        <div id="section-jobs" class="modules-part">
+          <div class="section-header">
+            <h2 class="panel-heading">Scrape Jobs</h2>
+
+            <div class="toolbar-spacer"></div>
+
+            <div class="search-wrap">
+              <svg class="icon search-icon" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+              <input id="job-search" class="input search" type="search" placeholder="Search" autocomplete="off" />
+            </div>
+
+            <label class="switch-wrap" title="Enable / Disable Prometheus"><input type="checkbox" class="prom-toggle-btn"><span class="switch"></span></label>
+            <button class="btn ghost icon-only prom-reload-btn" title="Reload or start Prometheus">
+              <svg class="icon" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg>
+            </button>
+            <button class="btn primary icon-only" id="add-job-btn" title="Add job">
+              <svg class="icon" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+            </button>
+          </div>
+
+          <div class="table-card">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Job</th>
+                  <th>Type</th>
+                  <th>Target</th>
+                  <th>Interval</th>
+                  <th class="col-actions">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="job-tbody"></tbody>
+            </table>
+          </div>
+
+          <div class="table-footer">
+            <span id="job-count" class="text-muted"></span>
+          </div>
+        </div>
+
+        <!-- rule files -->
+        <div id="section-rules" class="modules-part hidden">
+          <div class="section-header">
+            <h2 class="panel-heading">Rule Files</h2>
+
+            <div class="toolbar-spacer"></div>
+
+            <div class="search-wrap">
+              <svg class="icon search-icon" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+              <input id="rule-search" class="input search" type="search" placeholder="Search" autocomplete="off" />
+            </div>
+
+            <label class="switch-wrap" title="Enable / Disable Prometheus"><input type="checkbox" class="prom-toggle-btn"><span class="switch"></span></label>
+            <button class="btn ghost icon-only prom-reload-btn" title="Reload or start Prometheus">
+              <svg class="icon" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg>
+            </button>
+            <button class="btn ghost icon-only" id="add-rule-dir-btn" title="New directory">
+              <svg class="icon" viewBox="0 0 24 24"><path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/><path d="M12 10v6M9 13h6"/></svg>
+            </button>
+            <button class="btn primary icon-only" id="add-rule-btn" title="Add rule file">
+              <svg class="icon" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+            </button>
+          </div>
+
+          <div class="table-card file-tree-card">
+            <div id="rule-tree" class="file-tree"></div>
+          </div>
+
+          <div class="table-footer">
+            <span id="rule-count" class="text-muted"></span>
+          </div>
+        </div>
+
+        <!-- service discovery files -->
+        <div id="section-services" class="modules-part hidden">
+          <div class="section-header">
+            <h2 class="panel-heading">Service Files</h2>
+
+            <div class="toolbar-spacer"></div>
+
+            <div class="search-wrap">
+              <svg class="icon search-icon" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+              <input id="service-search" class="input search" type="search" placeholder="Search" autocomplete="off" />
+            </div>
+
+            <label class="switch-wrap" title="Enable / Disable Prometheus"><input type="checkbox" class="prom-toggle-btn"><span class="switch"></span></label>
+            <button class="btn ghost icon-only prom-reload-btn" title="Reload or start Prometheus">
+              <svg class="icon" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg>
+            </button>
+            <button class="btn ghost icon-only" id="add-service-dir-btn" title="New directory">
+              <svg class="icon" viewBox="0 0 24 24"><path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/><path d="M12 10v6M9 13h6"/></svg>
+            </button>
+            <button class="btn primary icon-only" id="add-service-btn" title="Add service discovery file">
+              <svg class="icon" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+            </button>
+          </div>
+
+          <div class="table-card file-tree-card">
+            <div id="service-tree" class="file-tree"></div>
+          </div>
+
+          <div class="table-footer">
+            <span id="service-count" class="text-muted"></span>
+          </div>
+        </div>
+
+        <!-- prometheus logs -->
+        <div id="section-prom-logs" class="logs-panel hidden">
+          <div class="section-header">
+            <h2 class="panel-heading">Prometheus Logs</h2>
+            <div class="header-spacer"></div>
+            <label class="switch-wrap" title="Enable / Disable Prometheus"><input type="checkbox" class="prom-toggle-btn"><span class="switch"></span></label>
+            <button class="btn ghost icon-only prom-reload-btn" title="Reload or start Prometheus">
+              <svg class="icon" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg>
+            </button>
+            <div class="search-wrap logs-search">
+              <svg class="icon search-icon" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+              <input id="prom-log-search" class="input search" type="search" placeholder="Search" autocomplete="off" />
+            </div>
+            <span id="prom-log-match-count" class="text-muted log-count"></span>
+            <button type="button" class="icon-btn" id="prom-log-oldest" title="Jump to oldest">
+              <svg class="icon" viewBox="0 0 24 24"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
+            </button>
+            <button type="button" class="icon-btn" id="prom-log-latest" title="Jump to latest">
+              <svg class="icon" viewBox="0 0 24 24"><path d="M12 5v14M19 12l-7 7-7-7"/></svg>
+            </button>
+            <button type="button" class="icon-btn" id="prom-log-prev" title="Previous match (Shift+Enter)" disabled>
+              <svg class="icon" viewBox="0 0 24 24"><path d="m18 15-6-6-6 6"/></svg>
+            </button>
+            <button type="button" class="icon-btn" id="prom-log-next" title="Next match (Enter)" disabled>
+              <svg class="icon" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg>
+            </button>
+          </div>
+          <div class="logs-shell">
+            <div class="logs-card">
+              <div id="prom-logs-body" class="logs-body mono"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- prometheus config section -->
+        <div id="section-prom-config" class="config-part hidden">
+          <div class="section-header config-header">
+            <h2 class="panel-heading">Config</h2>
+            <span class="config-filename mono">prometheusConfig.yml</span>
+            <div class="toolbar-spacer"></div>
+            <label class="switch-wrap" title="Enable / Disable Prometheus"><input type="checkbox" class="prom-toggle-btn"><span class="switch"></span></label>
+            <button class="btn ghost icon-only prom-reload-btn" title="Reload or start Prometheus">
+              <svg class="icon" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg>
+            </button>
+            <button type="button" class="btn ghost sm" id="prom-config-copy">Copy</button>
+          </div>
+          <div class="config-shell">
+            <div class="config-card">
+              <pre id="prom-config-yaml" class="yaml-view mono" spellcheck="false"></pre>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <div id="access-view" class="hidden">
+        <div id="section-users" class="modules-part">
+          <div class="section-header">
+            <h2 class="panel-heading">Users</h2>
+            <div class="toolbar-spacer"></div>
+            <div class="search-wrap">
+              <svg class="icon search-icon" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+              <input id="user-search" class="input search" type="search" placeholder="Search users" autocomplete="off" />
+            </div>
+            <button class="btn primary icon-only" id="add-user-btn" title="Add user">
+              <svg class="icon" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+            </button>
+          </div>
+          <div class="table-card">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Username</th>
+                  <th>Email</th>
+                  <th>Role</th>
+                  <th>Created</th>
+                  <th class="col-actions">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="users-tbody"></tbody>
+            </table>
+          </div>
+          <div class="table-footer">
+            <span id="users-count" class="text-muted"></span>
+          </div>
+        </div>
+      </div>
+
+      <div id="alertmanager-view" class="hidden">
+
+        <!-- alertmanager receivers -->
+        <div id="section-am-receivers" class="modules-part hidden">
+          <div class="section-header">
+            <h2 class="panel-heading">Receivers</h2>
+            <div class="toolbar-spacer"></div>
+            <div class="search-wrap">
+              <svg class="icon search-icon" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+              <input id="receiver-search" class="input search" type="search" placeholder="Search" autocomplete="off" />
+            </div>
+            <label class="switch-wrap" title="Enable / Disable Alertmanager"><input type="checkbox" class="am-toggle-btn"><span class="switch"></span></label>
+            <button class="btn ghost icon-only am-reload-btn" title="Reload Alertmanager">
+              <svg class="icon" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg>
+            </button>
+            <button class="btn primary icon-only" id="add-receiver-btn" title="Add receiver">
+              <svg class="icon" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+            </button>
+          </div>
+
+          <div class="table-card">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Receiver</th>
+                  <th>Type</th>
+                  <th>Route</th>
+                  <th class="col-actions">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="receiver-tbody"></tbody>
+            </table>
+          </div>
+
+          <div class="table-footer">
+            <span id="receiver-count" class="text-muted"></span>
+          </div>
+        </div>
+
+        <!-- alertmanager routes -->
+        <div id="section-am-routes" class="modules-part hidden">
+          <div class="section-header">
+            <h2 class="panel-heading">Routes</h2>
+            <div class="toolbar-spacer"></div>
+            <label class="switch-wrap" title="Enable / Disable Alertmanager"><input type="checkbox" class="am-toggle-btn"><span class="switch"></span></label>
+            <button class="btn ghost icon-only am-reload-btn" title="Reload Alertmanager">
+              <svg class="icon" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg>
+            </button>
+            <button type="button" class="btn ghost sm" id="routes-save-btn">Save routes</button>
+          </div>
+
+          <div class="table-card">
+            <div class="route-tree-head">
+              <span>Route</span>
+              <span>Matchers</span>
+              <span class="col-actions">Actions</span>
+            </div>
+            <div id="route-tree" class="route-tree"></div>
+          </div>
+        </div>
+
+        <!-- alertmanager inhibit rules -->
+        <div id="section-am-inhibit-rules" class="modules-part hidden">
+          <div class="section-header">
+            <h2 class="panel-heading">Inhibit Rules</h2>
+            <div class="toolbar-spacer"></div>
+            <div class="search-wrap">
+              <svg class="icon search-icon" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+              <input id="inhibit-rule-search" class="input search" type="search" placeholder="Search" autocomplete="off" />
+            </div>
+            <label class="switch-wrap" title="Enable / Disable Alertmanager"><input type="checkbox" class="am-toggle-btn"><span class="switch"></span></label>
+            <button class="btn ghost icon-only am-reload-btn" title="Reload Alertmanager">
+              <svg class="icon" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg>
+            </button>
+            <button class="btn primary icon-only" id="add-inhibit-rule-btn" title="Add inhibit rule">
+              <svg class="icon" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+            </button>
+          </div>
+
+          <div class="table-card">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Source matchers</th>
+                  <th>Target matchers</th>
+                  <th>Equal labels</th>
+                  <th class="col-actions">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="inhibit-rule-tbody"></tbody>
+            </table>
+          </div>
+
+          <div class="table-footer">
+            <span id="inhibit-rule-count" class="text-muted"></span>
+          </div>
+        </div>
+
+        <!-- alertmanager notifications -->
+        <div id="section-am-notifications" class="logs-panel hidden">
+          <div class="section-header">
+            <h2 class="panel-heading">Notifications</h2>
+            <div class="header-spacer"></div>
+            <label class="switch-wrap" title="Enable / Disable Alertmanager"><input type="checkbox" class="am-toggle-btn"><span class="switch"></span></label>
+            <button class="btn ghost icon-only am-reload-btn" title="Reload Alertmanager">
+              <svg class="icon" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg>
+            </button>
+            <button type="button" class="btn ghost sm" id="am-notifications-refresh">Refresh</button>
+          </div>
+          <div class="logs-shell">
+            <div class="logs-card">
+              <div id="am-notifications" class="logs-body mono"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- alertmanager logs -->
+        <div id="section-am-logs" class="logs-panel hidden">
+          <div class="section-header">
+            <h2 class="panel-heading">Alertmanager Logs</h2>
+            <div class="header-spacer"></div>
+            <label class="switch-wrap" title="Enable / Disable Alertmanager"><input type="checkbox" class="am-toggle-btn"><span class="switch"></span></label>
+            <button class="btn ghost icon-only am-reload-btn" title="Reload Alertmanager">
+              <svg class="icon" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg>
+            </button>
+            <div class="search-wrap logs-search">
+              <svg class="icon search-icon" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+              <input id="am-log-search" class="input search" type="search" placeholder="Search" autocomplete="off" />
+            </div>
+            <span id="am-log-match-count" class="text-muted log-count"></span>
+            <button type="button" class="icon-btn" id="am-log-oldest" title="Jump to oldest">
+              <svg class="icon" viewBox="0 0 24 24"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
+            </button>
+            <button type="button" class="icon-btn" id="am-log-latest" title="Jump to latest">
+              <svg class="icon" viewBox="0 0 24 24"><path d="M12 5v14M19 12l-7 7-7-7"/></svg>
+            </button>
+            <button type="button" class="icon-btn" id="am-log-prev" title="Previous match (Shift+Enter)" disabled>
+              <svg class="icon" viewBox="0 0 24 24"><path d="m18 15-6-6-6 6"/></svg>
+            </button>
+            <button type="button" class="icon-btn" id="am-log-next" title="Next match (Enter)" disabled>
+              <svg class="icon" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg>
+            </button>
+          </div>
+          <div class="logs-shell">
+            <div class="logs-card">
+              <div id="am-logs-body" class="logs-body mono"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- alertmanager config section -->
+        <div id="section-am-config" class="config-part hidden">
+          <div class="section-header config-header">
+            <h2 class="panel-heading">Config</h2>
+            <span class="config-filename mono">alertmanagerConfig.yml</span>
+            <div class="toolbar-spacer"></div>
+            <label class="switch-wrap" title="Enable / Disable Alertmanager"><input type="checkbox" class="am-toggle-btn"><span class="switch"></span></label>
+            <button class="btn ghost icon-only am-reload-btn" title="Reload Alertmanager">
+              <svg class="icon" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg>
+            </button>
+            <button type="button" class="btn ghost sm" id="am-config-copy">Copy</button>
+          </div>
+          <div class="config-shell">
+            <div class="config-card">
+              <pre id="am-config-yaml" class="yaml-view mono" spellcheck="false"></pre>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <div id="changelog-view" class="hidden">
+        <div id="section-changelog" class="modules-part">
+          <div class="section-header">
+            <h2 class="panel-heading">Changelog</h2>
+            <span id="git-branch" class="badge muted"></span>
+            <span id="git-remote" class="text-muted" style="font-size:11px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:260px;"></span>
+            <div class="toolbar-spacer"></div>
+            <button class="btn ghost sm" id="changelog-refresh-btn" title="Refresh history">
+              <svg class="icon" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg>
+            </button>
+            <button class="btn ghost sm" id="git-pull-btn" title="Pull from remote">
+              <svg class="icon" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></svg>
+              Pull
+            </button>
+            <button class="btn primary sm" id="git-push-btn" title="Push to remote">
+              <svg class="icon" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M17 8l-5-5-5 5"/><path d="M12 3v12"/></svg>
+              Push
+            </button>
+          </div>
+          <div class="table-card">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Commit</th>
+                  <th>Message</th>
+                  <th>Author</th>
+                  <th>Date</th>
+                  <th class="col-actions">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="changelog-tbody"></tbody>
+            </table>
+          </div>
+          <div class="table-footer">
+            <span id="changelog-count" class="text-muted"></span>
+            <span id="changelog-status" class="text-muted" style="font-size:11px;"></span>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- add / edit module dialog -->
+  <div id="dialog-overlay" class="overlay hidden"></div>
+  <div id="module-dialog" class="dialog hidden" role="dialog" aria-modal="true">
+    <div class="dialog-header">
+      <h3 id="dialog-title">Add module</h3>
+      <p id="dialog-subtitle" class="text-muted"></p>
+    </div>
+
+    <form id="module-form" novalidate>
+      <div class="field-grid">
+        <label class="label" for="f-name">Module name<span class="req">*</span></label>
+        <input id="f-name" class="input mono" placeholder="observecBlackboxModuleHttp" autocomplete="off" />
+
+        <label class="label" for="f-prober">Prober</label>
+        <select id="f-prober" class="input select">
+          <option value="http">http</option>
+          <option value="tcp">tcp</option>
+          <option value="icmp">icmp</option>
+        </select>
+
+        <label class="label" for="f-timeout">Timeout</label>
+        <input id="f-timeout" class="input mono" placeholder="5s" autocomplete="off" />
+
+        <label class="label" for="f-proto">Preferred IP protocol</label>
+        <select id="f-proto" class="input select">
+          <option value="ip4">ip4</option>
+          <option value="ip6">ip6</option>
+        </select>
+
+        <label class="label" for="f-fallback">IP protocol fallback</label>
+        <label class="switch-wrap"><input type="checkbox" id="f-fallback" /><span class="switch"></span></label>
+      </div>
+
+      <!-- http + tcp -->
+      <div id="tls-section" class="hidden">
+        <div class="section-divider"><span>TLS</span></div>
+        <div class="field-grid gap-below">
+          <label class="label" for="f-tls-enable">Use TLS</label>
+          <label class="switch-wrap"><input type="checkbox" id="f-tls-enable" /><span class="switch"></span></label>
+        </div>
+
+        <div id="tls-fields" class="hidden">
+          <div class="field-grid">
+            <label class="label" for="f-server-name">Server name</label>
+            <input id="f-server-name" class="input mono" placeholder="baseserver.com" autocomplete="off" />
+
+            <label class="label">CA certificate</label>
+            <div class="upload-row">
+              <button type="button" class="btn ghost sm" data-tls-upload="ca">Choose file</button>
+              <input type="file" id="f-ca-file" class="hidden" />
+              <span class="text-muted upload-name" data-tls-name="ca"></span>
+            </div>
+
+            <label class="label">Certificate</label>
+            <div class="upload-row">
+              <button type="button" class="btn ghost sm" data-tls-upload="cert">Choose file</button>
+              <input type="file" id="f-cert-file" class="hidden" />
+              <span class="text-muted upload-name" data-tls-name="cert"></span>
+            </div>
+
+            <label class="label">Private key</label>
+            <div class="upload-row">
+              <button type="button" class="btn ghost sm" data-tls-upload="key">Choose file</button>
+              <input type="file" id="f-key-file" class="hidden" />
+              <span class="text-muted upload-name" data-tls-name="key"></span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- http only -->
+      <div id="http-section">
+        <div class="section-divider"><span>HTTP settings</span></div>
+        <div class="field-grid">
+          <label class="label" for="f-method">Method</label>
+          <select id="f-method" class="input select">
+            <option>GET</option><option>POST</option><option>HEAD</option><option>PUT</option>
+          </select>
+
+          <div id="post-fields" class="grid-span hidden">
+            <div class="field-grid">
+              <label class="label" for="f-content-type">Content type</label>
+              <select id="f-content-type" class="input select">
+                <option>application/json</option>
+                <option>application/x-www-form-urlencoded</option>
+                <option>text/plain</option>
+              </select>
+
+              <label class="label" for="f-body">Request body</label>
+              <textarea id="f-body" class="input textarea mono" rows="4" placeholder='{"key": "value"}' spellcheck="false"></textarea>
+            </div>
+          </div>
+
+          <label class="label" for="f-codes">Valid status codes<button type="button" class="info-tip" data-tip="Comma separated. Leave empty to accept any response code.">i</button></label>
+          <input id="f-codes" class="input mono" placeholder="200 or 200, 301" autocomplete="off" />
+
+          <label class="label">HTTP versions</label>
+          <div class="check-row">
+            <label class="check"><input type="checkbox" id="f-v10" value="HTTP/1.0" /><span>HTTP/1.0</span></label>
+            <label class="check"><input type="checkbox" id="f-v11" value="HTTP/1.1" /><span>HTTP/1.1</span></label>
+            <label class="check"><input type="checkbox" id="f-v20" value="HTTP/2.0" /><span>HTTP/2.0</span></label>
+          </div>
+
+          <label class="label" for="f-follow">Follow redirects</label>
+          <label class="switch-wrap"><input type="checkbox" id="f-follow" /><span class="switch"></span></label>
+        </div>
+      </div>
+
+      <p id="form-error" class="error hidden"></p>
+
+      <div class="dialog-footer">
+        <button type="button" class="btn destructive hidden" id="f-delete">Delete</button>
+        <button type="button" class="btn ghost" id="f-cancel">Cancel</button>
+        <button type="submit" class="btn primary" id="f-save">Create module</button>
+      </div>
+    </form>
+  </div>
+
+  <!-- add / edit prometheus job dialog -->
+  <div id="job-dialog" class="dialog hidden" role="dialog" aria-modal="true">
+    <div class="dialog-header">
+      <h3 id="job-dialog-title">Add job</h3>
+      <p id="job-dialog-subtitle" class="text-muted">Configure how Prometheus discovers and scrapes targets.</p>
+    </div>
+
+    <form id="job-form" novalidate>
+      <div class="field-grid">
+        <label class="label" for="f-job-type">Job type</label>
+        <select id="f-job-type" class="select">
+          <option value="static">Static target</option>
+          <option value="file_sd">File service discovery</option>
+          <option value="kubernetes">Kubernetes</option>
+          <option value="probe">Probe (blackbox)</option>
+        </select>
+
+        <label class="label" for="f-job-name">Job name<span class="req">*</span></label>
+        <input id="f-job-name" class="input mono" placeholder="node_exporter" autocomplete="off" />
+
+        <label class="label job-fields-static" for="f-job-target">Target<span class="req">*</span><button type="button" class="info-tip" data-tip="One target or comma separated. For HTTP use URL, TCP use host:port, Ping use hostname/IP.">i</button></label>
+        <input id="f-job-target" class="input mono job-fields-static" placeholder="localhost:9100 or host1:9100, host2:9100" autocomplete="off" />
+
+        <label class="label job-fields-static" for="f-job-static-path">Metrics path</label>
+        <input id="f-job-static-path" class="input mono job-fields-static" value="/metrics" autocomplete="off" />
+
+        <label class="label job-fields-file-sd hidden" for="f-job-sd">Service discovery files<span class="req">*</span><button type="button" class="info-tip" data-tip="Comma separated paths from the Service Files tab (for example team/prod.yml).">i</button></label>
+        <input id="f-job-sd" class="input mono job-fields-file-sd hidden" list="job-sd-datalist" autocomplete="off" />
+        <datalist id="job-sd-datalist"></datalist>
+
+        <label class="label job-fields-file-sd hidden" for="f-job-file-path">Metrics path</label>
+        <input id="f-job-file-path" class="input mono job-fields-file-sd hidden" value="/metrics" autocomplete="off" />
+
+        <label class="label job-fields-kubernetes hidden">Kubeconfig<span class="req">*</span><button type="button" class="info-tip" data-tip="Pick an uploaded file or upload a new kubeconfig. Stored under prometheus/kubeConfigs.">i</button></label>
+        <div class="job-fields-kubernetes hidden">
+          <div id="kubeconfig-chips" class="kube-chip-row"></div>
+          <div class="upload-row">
+            <button type="button" class="btn ghost sm" id="kubeconfig-choose-btn">Upload kubeconfig</button>
+            <input type="file" id="f-job-kubeconfig-file" class="hidden" />
+            <span class="text-muted upload-name" id="kubeconfig-upload-name"></span>
+          </div>
+          <div id="kubeconfig-saveas-row" class="hidden" style="display:flex;gap:8px;align-items:center;margin-top:8px;">
+            <input id="f-job-kubeconfig-name" class="input mono" placeholder="Save as: prod-kubeconfig" autocomplete="off" style="max-width:240px;" />
+          </div>
+          <input type="hidden" id="f-job-kubeconfig" value="" />
+        </div>
+
+        <label class="label job-fields-kubernetes hidden" for="f-job-kube-role">Role<span class="req">*</span><button type="button" class="info-tip" data-tip="Kubernetes object type to discover.">i</button></label>
+        <select id="f-job-kube-role" class="input select job-fields-kubernetes hidden">
+          <option value="node">node</option>
+          <option value="service">service</option>
+          <option value="pod">pod</option>
+          <option value="endpoints">endpoints</option>
+          <option value="endpointslice">endpointslice</option>
+          <option value="ingress">ingress</option>
+        </select>
+
+        <label class="label job-fields-kubernetes hidden" for="f-job-kube-api">API server<button type="button" class="info-tip" data-tip="Optional. Leave empty to use the cluster from kubeconfig.">i</button></label>
+        <input id="f-job-kube-api" class="input mono job-fields-kubernetes hidden" placeholder="https://192.168.1.10:6443" autocomplete="off" />
+
+        <label class="label job-fields-kubernetes hidden" for="f-job-kube-namespaces">Namespaces<button type="button" class="info-tip" data-tip="Optional comma separated namespaces to watch. Empty watches all.">i</button></label>
+        <input id="f-job-kube-namespaces" class="input mono job-fields-kubernetes hidden" placeholder="default, monitoring" autocomplete="off" />
+
+        <label class="label job-fields-kubernetes hidden" for="f-job-kube-path">Metrics path</label>
+        <input id="f-job-kube-path" class="input mono job-fields-kubernetes hidden" value="/metrics" autocomplete="off" />
+
+        <label class="label job-fields-probe hidden" for="f-job-probe-mode">Probe targets</label>
+        <select id="f-job-probe-mode" class="select job-fields-probe hidden">
+          <option value="single">Single target</option>
+          <option value="multiple">Multiple targets (file SD)</option>
+        </select>
+
+        <label class="label job-fields-probe job-fields-probe-single hidden" for="f-job-probe-target">Probe target<span class="req">*</span><button type="button" class="info-tip" data-tip="One target or comma separated. For HTTP use URL, TCP use host:port, Ping use hostname/IP.">i</button></label>
+        <input id="f-job-probe-target" class="input mono job-fields-probe job-fields-probe-single hidden" placeholder="https://example.com" autocomplete="off" />
+        <span class="job-fields-probe job-fields-probe-single hidden" aria-hidden="true"></span>
+        <p class="hint job-fields-probe job-fields-probe-single hidden">URL or host:port passed to the blackbox exporter as the probe target.</p>
+
+        <label class="label job-fields-probe job-fields-probe-multiple hidden" for="f-job-probe-sd">Service discovery files<span class="req">*</span><button type="button" class="info-tip" data-tip="Comma separated paths from the Service Files tab.">i</button></label>
+        <input id="f-job-probe-sd" class="input mono job-fields-probe job-fields-probe-multiple hidden" list="job-sd-datalist" autocomplete="off" />
+
+        <label class="label job-fields-probe hidden" for="f-job-module">Blackbox module<span class="req">*</span><button type="button" class="info-tip" data-tip="Comma separated when probing through multiple modules.">i</button></label>
+        <input id="f-job-module" class="input mono job-fields-probe hidden" list="job-modules-datalist" placeholder="observecBlackboxModuleDefault" autocomplete="off" />
+        <datalist id="job-modules-datalist"></datalist>
+
+        <label class="label job-fields-probe hidden" for="f-job-probe-address">Blackbox exporter<span class="req">*</span><button type="button" class="info-tip" data-tip="Address of the blackbox exporter that runs the probe.">i</button></label>
+        <input id="f-job-probe-address" class="input mono job-fields-probe hidden" value="localhost:9115" autocomplete="off" />
+
+        <div id="job-relabel-section" class="grid-span job-fields-relabel">
+          <div class="section-divider"><span>Relabel configs<button type="button" class="info-tip" data-tip="Optional relabel rules applied before scraping. Probe jobs get default blackbox relabeling when empty.">i</button></span></div>
+          <div id="job-relabel-rules" class="relabel-rules"></div>
+          <button type="button" class="btn ghost sm" id="add-relabel-rule-btn">+ Add relabel rule</button>
+        </div>
+
+        <label class="label" for="f-job-interval">Scrape interval<button type="button" class="info-tip" data-tip="Leave empty to use the global scrape interval.">i</button></label>
+        <input id="f-job-interval" class="input mono" placeholder="15s" autocomplete="off" />
+      </div>
+
+      <p id="job-error" class="error hidden"></p>
+
+      <div class="dialog-footer">
+        <button type="button" class="btn destructive hidden" id="f-job-delete">Delete</button>
+        <button type="button" class="btn ghost" id="f-job-cancel">Cancel</button>
+        <button type="submit" class="btn primary" id="f-job-save">Create job</button>
+      </div>
+    </form>
+  </div>
+
+  <!-- add / edit alertmanager route dialog -->
+  <div id="route-dialog" class="dialog config-dialog hidden" role="dialog" aria-modal="true">
+    <div class="dialog-header">
+      <h3 id="route-dialog-title">Edit route</h3>
+      <p id="route-dialog-subtitle" class="text-muted">Configure matching and timing for this route.</p>
+    </div>
+
+    <form id="route-form" novalidate>
+      <div class="field-grid route-editor-grid">
+        <label class="label" for="f-route-receiver">Receiver<span class="req">*</span><button type="button" class="info-tip" data-tip="Receiver that handles alerts matching this route.">i</button></label>
+        <select id="f-route-receiver" class="select"></select>
+
+        <label class="label" for="f-route-group-by">Group by<button type="button" class="info-tip" data-tip="Comma separated label names used to group alerts.">i</button></label>
+        <input id="f-route-group-by" class="input mono" placeholder="alertname, instance" autocomplete="off" />
+
+        <label class="label" for="f-route-group-wait">Group wait<button type="button" class="info-tip" data-tip="How long to wait before sending the first notification for a new group.">i</button></label>
+        <input id="f-route-group-wait" class="input mono" placeholder="30s" autocomplete="off" />
+
+        <label class="label" for="f-route-group-interval">Group interval<button type="button" class="info-tip" data-tip="How long to wait before sending follow-up notifications for a group.">i</button></label>
+        <input id="f-route-group-interval" class="input mono" placeholder="5m" autocomplete="off" />
+
+        <label class="label" for="f-route-repeat-interval">Repeat interval<button type="button" class="info-tip" data-tip="How long to wait before resending a notification for the same group.">i</button></label>
+        <input id="f-route-repeat-interval" class="input mono" placeholder="4h" autocomplete="off" />
+
+        <label class="label" for="f-route-continue">Continue<button type="button" class="info-tip" data-tip="Keep matching sibling routes after this one matches.">i</button></label>
+        <label class="switch-wrap"><input type="checkbox" id="f-route-continue" /><span class="switch"></span></label>
+      </div>
+
+      <div class="section-divider"><span>Matchers<button type="button" class="info-tip" data-tip="Modern matcher syntax, for example severity = critical.">i</button></span></div>
+      <div id="route-matchers-list" class="route-list"></div>
+      <button type="button" class="btn ghost sm" id="route-add-matcher-btn">+ Add matcher</button>
+
+      <div class="section-divider"><span>Match<button type="button" class="info-tip" data-tip="Legacy exact label matching as key/value pairs.">i</button></span></div>
+      <div id="route-match-rows" class="route-list"></div>
+      <button type="button" class="btn ghost sm" id="route-add-match-btn">+ Add exact match</button>
+
+      <div class="section-divider"><span>Match RE<button type="button" class="info-tip" data-tip="Legacy regex label matching as key/value pairs.">i</button></span></div>
+      <div id="route-match-re-rows" class="route-list"></div>
+      <button type="button" class="btn ghost sm" id="route-add-match-re-btn">+ Add regex match</button>
+
+      <p id="route-error" class="error hidden"></p>
+
+      <div class="dialog-footer">
+        <button type="button" class="btn destructive hidden" id="route-delete-btn">Delete route</button>
+        <button type="button" class="btn ghost" id="route-cancel-btn">Cancel</button>
+        <button type="button" class="btn primary" id="route-apply-btn">Apply changes</button>
+      </div>
+    </form>
+  </div>
+
+  <!-- add / edit alertmanager inhibit rule dialog -->
+  <div id="inhibit-dialog" class="dialog config-dialog hidden" role="dialog" aria-modal="true">
+    <div class="dialog-header">
+      <h3 id="inhibit-dialog-title">Add inhibit rule</h3>
+      <p id="inhibit-dialog-subtitle" class="text-muted">Suppress target alerts when a matching source alert is firing.</p>
+    </div>
+
+    <form id="inhibit-form" novalidate>
+      <div class="section-divider"><span>Source matchers<button type="button" class="info-tip" data-tip="Alerts matching these labels inhibit target alerts.">i</button></span></div>
+      <div id="inhibit-source-matchers-list" class="route-list"></div>
+      <button type="button" class="btn ghost sm" id="inhibit-add-source-matcher-btn">+ Add source matcher</button>
+
+      <div class="section-divider"><span>Target matchers<button type="button" class="info-tip" data-tip="Alerts matching these labels can be inhibited.">i</button></span></div>
+      <div id="inhibit-target-matchers-list" class="route-list"></div>
+      <button type="button" class="btn ghost sm" id="inhibit-add-target-matcher-btn">+ Add target matcher</button>
+
+      <div class="field-grid" style="margin-top: 14px;">
+        <label class="label" for="f-inhibit-equal">Equal labels<button type="button" class="info-tip" data-tip="Optional comma separated labels that must be equal on source and target alerts.">i</button></label>
+        <input id="f-inhibit-equal" class="input mono" placeholder="alertname, instance" autocomplete="off" />
+      </div>
+
+      <p id="inhibit-error" class="error hidden"></p>
+
+      <div class="dialog-footer">
+        <button type="button" class="btn destructive hidden" id="inhibit-delete-btn">Delete rule</button>
+        <button type="button" class="btn ghost" id="inhibit-cancel-btn">Cancel</button>
+        <button type="submit" class="btn primary" id="inhibit-save-btn">Create rule</button>
+      </div>
+    </form>
+  </div>
+
+  <!-- add / edit alertmanager receiver dialog -->
+  <div id="receiver-dialog" class="dialog hidden" role="dialog" aria-modal="true">
+    <div class="dialog-header">
+      <h3 id="receiver-dialog-title">Add receiver</h3>
+      <p id="receiver-dialog-subtitle" class="text-muted"></p>
+    </div>
+
+    <form id="receiver-form" novalidate>
+      <div class="field-grid">
+        <label class="label" for="f-receiver-name">Receiver name<span class="req">*</span></label>
+        <input id="f-receiver-name" class="input mono" placeholder="team-pager" autocomplete="off" />
+
+        <label class="label" for="f-receiver-type">Type</label>
+        <select id="f-receiver-type" class="select">
+          <option value="webhook">Webhook</option>
+          <option value="email">Email</option>
+          <option value="slack">Slack</option>
+        </select>
+
+        <label class="label receiver-fields-webhook" for="f-receiver-webhook-url">Webhook URL<span class="req">*</span><button type="button" class="info-tip" data-tip="HTTP endpoint that receives Alertmanager notification payloads.">i</button></label>
+        <input id="f-receiver-webhook-url" class="input mono receiver-fields-webhook" placeholder="https://example.com/hooks/alerts" autocomplete="off" />
+
+        <label class="label receiver-fields-webhook" for="f-receiver-send-resolved">Send resolved<button type="button" class="info-tip" data-tip="Also notify when alerts are resolved.">i</button></label>
+        <label class="switch-wrap receiver-fields-webhook"><input type="checkbox" id="f-receiver-send-resolved" checked /><span class="switch"></span></label>
+
+        <label class="label receiver-fields-email hidden" for="f-receiver-email-to">To<span class="req">*</span></label>
+        <input id="f-receiver-email-to" class="input mono receiver-fields-email hidden" placeholder="alerts@example.com" autocomplete="off" />
+
+        <label class="label receiver-fields-email hidden" for="f-receiver-email-from">From<span class="req">*</span></label>
+        <input id="f-receiver-email-from" class="input mono receiver-fields-email hidden" placeholder="alertmanager@example.com" autocomplete="off" />
+
+        <label class="label receiver-fields-email hidden" for="f-receiver-email-smarthost">SMTP server<span class="req">*</span></label>
+        <input id="f-receiver-email-smarthost" class="input mono receiver-fields-email hidden" placeholder="smtp.example.com:587" autocomplete="off" />
+        <span class="receiver-fields-email hidden" aria-hidden="true"></span>
+        <p class="hint receiver-fields-email hidden">SMTP host and port used to deliver email notifications.</p>
+
+        <label class="label receiver-fields-email hidden" for="f-receiver-email-tls">Require TLS</label>
+        <label class="switch-wrap receiver-fields-email hidden"><input type="checkbox" id="f-receiver-email-tls" /><span class="switch"></span></label>
+
+        <label class="label receiver-fields-slack hidden" for="f-receiver-slack-url">Slack API URL<span class="req">*</span></label>
+        <input id="f-receiver-slack-url" class="input mono receiver-fields-slack hidden" placeholder="https://hooks.slack.com/services/..." autocomplete="off" />
+        <span class="receiver-fields-slack hidden" aria-hidden="true"></span>
+        <p class="hint receiver-fields-slack hidden">Incoming webhook URL from your Slack app.</p>
+
+        <label class="label receiver-fields-slack hidden" for="f-receiver-slack-channel">Channel</label>
+        <input id="f-receiver-slack-channel" class="input mono receiver-fields-slack hidden" placeholder="#alerts" autocomplete="off" />
+        <span class="receiver-fields-slack hidden" aria-hidden="true"></span>
+        <p class="hint receiver-fields-slack hidden">Optional channel override, for example #alerts.</p>
+
+        <label class="label receiver-fields-slack hidden" for="f-receiver-slack-title">Title</label>
+        <input id="f-receiver-slack-title" class="input mono receiver-fields-slack hidden" placeholder="{{ .GroupLabels.alertname }}" autocomplete="off" />
+        <span class="receiver-fields-slack hidden" aria-hidden="true"></span>
+        <p class="hint receiver-fields-slack hidden">Optional notification title. Supports Alertmanager template variables.</p>
+
+        <label class="label receiver-fields-slack hidden" for="f-receiver-slack-text">Text</label>
+        <textarea id="f-receiver-slack-text" class="input textarea mono receiver-fields-slack hidden" rows="3" placeholder="{{ range .Alerts }}{{ .Annotations.summary }}{{ end }}" spellcheck="false"></textarea>
+        <span class="receiver-fields-slack hidden" aria-hidden="true"></span>
+        <p class="hint receiver-fields-slack hidden">Optional message body. Supports Alertmanager template variables.</p>
+
+        <label class="label receiver-fields-slack hidden" for="f-receiver-slack-send-resolved">Send resolved</label>
+        <label class="switch-wrap receiver-fields-slack hidden"><input type="checkbox" id="f-receiver-slack-send-resolved" checked /><span class="switch"></span></label>
+      </div>
+
+      <p id="receiver-error" class="error hidden"></p>
+
+      <div class="dialog-footer">
+        <button type="button" class="btn destructive hidden" id="f-receiver-delete">Delete</button>
+        <button type="button" class="btn ghost" id="f-receiver-cancel">Cancel</button>
+        <button type="submit" class="btn primary" id="f-receiver-save">Create receiver</button>
+      </div>
+    </form>
+  </div>
+
+    <!-- add / edit rule file or service discovery file dialog -->
+    <div id="file-dialog" class="dialog config-dialog hidden" role="dialog" aria-modal="true">
+      <div class="dialog-header">
+        <h3 id="file-dialog-title">New rule file</h3>
+        <p id="file-dialog-subtitle" class="text-muted"></p>
+      </div>
+
+      <form id="file-form" novalidate style="padding:18px 24px 20px;">
+        <div class="field-grid">
+          <label class="label" for="f-file-name">File path<span class="req">*</span><button type="button" class="info-tip" data-tip="Use / to create files inside directories. Parent folders are created automatically.">i</button></label>
+          <input id="f-file-name" class="input mono" placeholder="alerts.yml or team/alerts.yml" autocomplete="off" />
+        </div>
+
+        <div id="file-editor-body"></div>
+
+        <p id="file-error" class="error hidden"></p>
+
+        <div class="dialog-footer">
+          <button type="button" class="btn destructive hidden" id="f-file-delete">Delete</button>
+          <button type="button" class="btn ghost" id="f-file-cancel">Cancel</button>
+          <button type="submit" class="btn primary" id="f-file-save">Create file</button>
+        </div>
+      </form>
+    </div>
+
+   <!-- add / edit monitor dialog (Uptime Kuma style) -->
+   <div id="monitor-dialog" class="dialog hidden" role="dialog" aria-modal="true">
+     <div class="dialog-header">
+       <h3 id="monitor-dialog-title">New Monitor</h3>
+       <p id="monitor-dialog-subtitle" class="text-muted"></p>
+     </div>
+
+      <form id="monitor-form" novalidate>
+        <div class="field-grid">
+          <label class="label" for="f-monitor-name">Friendly Name<span class="req">*</span></label>
+          <input id="f-monitor-name" class="input" placeholder="My Website" autocomplete="off" />
+
+          <label class="label" for="f-monitor-target">Target(s)<span class="req">*</span><button type="button" class="info-tip" data-tip="One target or comma separated. For HTTP use URL, TCP use host:port, Ping use hostname/IP.">i</button></label>
+          <input id="f-monitor-target" class="input mono" placeholder="https://example.com  or  1.1.1.1:443, 8.8.8.8" autocomplete="off" />
+
+          <label class="label" for="f-monitor-type">Monitor Type</label>
+          <select id="f-monitor-type" class="select">
+            <option value="http">HTTP(s)</option>
+            <option value="keyword">HTTP(s) - Keyword</option>
+            <option value="tcp">TCP Port</option>
+            <option value="icmp">Ping (ICMP)</option>
+          </select>
+
+          <label class="label" for="f-monitor-interval">Heartbeat Interval</label>
+          <select id="f-monitor-interval" class="select">
+            <option value="15s">15 seconds</option>
+            <option value="30s">30 seconds</option>
+            <option value="60s" selected>60 seconds</option>
+            <option value="120s">2 minutes</option>
+            <option value="300s">5 minutes</option>
+          </select>
+
+          <label class="label" for="f-monitor-retries">Retries before alert<button type="button" class="info-tip" data-tip="Failed heartbeats before firing. Slack alert fires after interval × retries.">i</button></label>
+          <select id="f-monitor-retries" class="select">
+            <option value="0">0 (alert immediately)</option>
+            <option value="1" selected>1</option>
+            <option value="2">2</option>
+            <option value="3">3</option>
+            <option value="5">5</option>
+          </select>
+
+          <label class="label" for="f-monitor-timeout">Timeout</label>
+          <input id="f-monitor-timeout" class="input mono" placeholder="10s" autocomplete="off" value="10s" />
+
+          <label class="label" for="f-monitor-slack-url">Slack Webhook URL<button type="button" class="info-tip" data-tip="Alert sent to this webhook after retries failures. Leave empty to use default receiver.">i</button></label>
+          <input id="f-monitor-slack-url" class="input mono" placeholder="https://hooks.slack.com/services/..." autocomplete="off" />
+
+          <label class="label" for="f-monitor-slack-channel">Slack Channel</label>
+          <input id="f-monitor-slack-channel" class="input mono" placeholder="#alerts (optional)" autocomplete="off" />
+
+          <label class="label" for="f-monitor-proto">Preferred IP protocol</label>
+          <select id="f-monitor-proto" class="input select">
+            <option value="ip4">ip4</option>
+            <option value="ip6">ip6</option>
+          </select>
+
+          <label class="label" for="f-monitor-fallback">IP protocol fallback</label>
+          <label class="switch-wrap"><input type="checkbox" id="f-monitor-fallback" checked /><span class="switch"></span></label>
+        </div>
+
+        <div id="monitor-tls-section" class="hidden">
+          <div class="section-divider"><span>TLS</span></div>
+          <div class="field-grid gap-below">
+            <label class="label" for="f-monitor-tls-enable">Use TLS</label>
+            <label class="switch-wrap"><input type="checkbox" id="f-monitor-tls-enable" /><span class="switch"></span></label>
+          </div>
+          <div id="monitor-tls-fields" class="hidden">
+            <div class="field-grid">
+              <label class="label" for="f-monitor-server-name">Server name</label>
+              <input id="f-monitor-server-name" class="input mono" placeholder="example.com" autocomplete="off" />
+
+              <label class="label">CA certificate</label>
+              <div class="upload-row">
+                <button type="button" class="btn ghost sm" data-monitor-tls-upload="ca">Choose file</button>
+                <input type="file" id="f-monitor-ca-file" class="hidden" />
+                <span class="text-muted upload-name" data-monitor-tls-name="ca"></span>
+              </div>
+
+              <label class="label">Certificate</label>
+              <div class="upload-row">
+                <button type="button" class="btn ghost sm" data-monitor-tls-upload="cert">Choose file</button>
+                <input type="file" id="f-monitor-cert-file" class="hidden" />
+                <span class="text-muted upload-name" data-monitor-tls-name="cert"></span>
+              </div>
+
+              <label class="label">Private key</label>
+              <div class="upload-row">
+                <button type="button" class="btn ghost sm" data-monitor-tls-upload="key">Choose file</button>
+                <input type="file" id="f-monitor-key-file" class="hidden" />
+                <span class="text-muted upload-name" data-monitor-tls-name="key"></span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div id="monitor-http-section">
+          <div class="section-divider"><span>HTTP settings</span></div>
+          <div class="field-grid">
+            <label class="label monitor-field-http" for="f-monitor-method">Method</label>
+            <select id="f-monitor-method" class="input select monitor-field-http">
+              <option>GET</option><option>POST</option><option>HEAD</option><option>PUT</option>
+            </select>
+
+            <div id="monitor-post-fields" class="grid-span hidden">
+              <div class="field-grid">
+                <label class="label" for="f-monitor-content-type">Content type</label>
+                <select id="f-monitor-content-type" class="input select">
+                  <option>application/json</option>
+                  <option>application/x-www-form-urlencoded</option>
+                  <option>text/plain</option>
+                </select>
+
+                <label class="label" for="f-monitor-body">Request body</label>
+                <textarea id="f-monitor-body" class="input textarea mono" rows="3" placeholder='{"key": "value"}' spellcheck="false"></textarea>
+              </div>
+            </div>
+
+            <label class="label monitor-field-http" for="f-monitor-codes">Valid status codes<button type="button" class="info-tip" data-tip="Comma separated. Leave empty to accept any 2xx.">i</button></label>
+            <input id="f-monitor-codes" class="input mono monitor-field-http" placeholder="200 or 200, 301" autocomplete="off" />
+
+            <label class="label">HTTP versions</label>
+            <div class="check-row">
+              <label class="check"><input type="checkbox" id="f-monitor-v10" value="HTTP/1.0" /><span>HTTP/1.0</span></label>
+              <label class="check"><input type="checkbox" id="f-monitor-v11" value="HTTP/1.1" checked /><span>HTTP/1.1</span></label>
+              <label class="check"><input type="checkbox" id="f-monitor-v20" value="HTTP/2.0" checked /><span>HTTP/2.0</span></label>
+            </div>
+
+            <label class="label" for="f-monitor-follow">Follow redirects</label>
+            <label class="switch-wrap gap-below"><input type="checkbox" id="f-monitor-follow" checked /><span class="switch"></span></label>
+
+            <label class="label monitor-field-keyword hidden" for="f-monitor-keyword">Keyword<span class="req">*</span></label>
+            <input id="f-monitor-keyword" class="input mono monitor-field-keyword hidden" placeholder="success" autocomplete="off" />
+            <span class="monitor-field-keyword hidden"></span>
+            <p class="hint monitor-field-keyword hidden">Search string in response body.</p>
+
+            <label class="label monitor-field-keyword hidden" for="f-monitor-keyword-inverted">Invert Keyword</label>
+            <label class="switch-wrap monitor-field-keyword hidden"><input type="checkbox" id="f-monitor-keyword-inverted" /><span class="switch"></span></label>
+            <span class="monitor-field-keyword hidden"></span>
+            <p class="hint monitor-field-keyword hidden">Fail when keyword present instead of missing.</p>
+          </div>
+        </div>
+
+        <div class="field-grid">
+          <label class="label" for="f-monitor-desc">Description</label>
+          <input id="f-monitor-desc" class="input" placeholder="Optional note" autocomplete="off" />
+        </div>
+
+       <p id="monitor-error" class="error hidden"></p>
+
+       <div class="dialog-footer">
+         <button type="button" class="btn destructive hidden" id="f-monitor-delete">Delete</button>
+         <button type="button" class="btn ghost" id="f-monitor-cancel">Cancel</button>
+         <button type="submit" class="btn primary" id="f-monitor-save">Create Monitor</button>
+       </div>
+     </form>
+   </div>
+
+  <div id="login-overlay" class="login-overlay hidden">
+    <div class="login-card">
+      <form id="login-form" novalidate>
+        <div class="field-grid" style="grid-template-columns: 1fr; row-gap:12px;">
+          <div>
+            <label class="label" for="login-username">Username</label>
+            <input id="login-username" class="input" type="text" placeholder="admin" autocomplete="username" style="margin-top:6px;" />
+          </div>
+          <div>
+            <label class="label" for="login-password">Password</label>
+            <input id="login-password" class="input" type="password" placeholder="••••••••" autocomplete="current-password" style="margin-top:6px;" />
+          </div>
+        </div>
+        <p id="login-error" class="error hidden" style="margin-top:12px;"></p>
+        <button type="submit" class="btn primary" id="login-btn" style="width:100%; margin-top:16px; height:36px;">Sign in</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- add/edit user dialog -->
+  <div id="user-dialog" class="dialog hidden" role="dialog" aria-modal="true">
+    <div class="dialog-header">
+      <h3 id="user-dialog-title">Add user</h3>
+      <p id="user-dialog-subtitle" class="text-muted">Create a new user. Readers can only view.</p>
+    </div>
+    <form id="user-form" novalidate>
+      <div class="field-grid">
+        <label class="label" for="f-user-username">Username</label>
+        <input id="f-user-username" class="input mono" placeholder="viewer1" autocomplete="off" />
+        <label class="label" for="f-user-email">Email</label>
+        <input id="f-user-email" class="input" type="email" placeholder="user@example.com" autocomplete="off" />
+        <label class="label" for="f-user-password">Password</label>
+        <input id="f-user-password" class="input" type="password" placeholder="••••" autocomplete="new-password" />
+        <label class="label" for="f-user-role">Access</label>
+        <select id="f-user-role" class="select">
+          <option value="READER">Read — view only</option>
+          <option value="ADMIN">Read & Write — full access</option>
+        </select>
+      </div>
+      <p id="user-error" class="error hidden"></p>
+      <div class="dialog-footer">
+        <button type="button" class="btn destructive hidden" id="f-user-delete">Delete</button>
+        <button type="button" class="btn ghost" id="f-user-cancel">Cancel</button>
+        <button type="submit" class="btn primary" id="f-user-save">Create user</button>
+      </div>
+    </form>
+  </div>
+
+  <!-- git push/pull dialog -->
+  <div id="git-dialog" class="dialog hidden" role="dialog" aria-modal="true">
+    <div class="dialog-header">
+      <h3 id="git-dialog-title">Push to remote</h3>
+      <p id="git-dialog-subtitle" class="text-muted">Enter remote URL and token to push/pull. Token is never stored in plain text on server logs.</p>
+    </div>
+    <form id="git-form" novalidate>
+      <div class="field-grid">
+        <label class="label" for="f-git-url">Remote URL</label>
+        <input id="f-git-url" class="input mono" placeholder="https://github.com/user/repo.git" autocomplete="off" />
+        <label class="label" for="f-git-branch">Branch</label>
+        <input id="f-git-branch" class="input mono" placeholder="main" value="main" autocomplete="off" />
+        <label class="label" for="f-git-username">Username</label>
+        <input id="f-git-username" class="input" placeholder="optional (oauth2)" autocomplete="off" />
+        <label class="label" for="f-git-token">Token / Password</label>
+        <input id="f-git-token" class="input" type="password" placeholder="ghp_... or PAT" autocomplete="off" />
+      </div>
+      <p id="git-error" class="error hidden"></p>
+      <div class="dialog-footer">
+        <button type="button" class="btn ghost" id="f-git-cancel">Cancel</button>
+        <button type="submit" class="btn primary" id="f-git-submit">Push</button>
+      </div>
+    </form>
+  </div>
+
+  <div id="toasts" class="toasts"></div>
+  <div id="row-menu" class="row-menu hidden"></div>
+
+  <script src="/app.js?v=20260906x"></script>
+</body>
+</html>

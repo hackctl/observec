@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>observec · probe log</title>
+  <link rel="icon" type="image/png" href="/observec.png?v=20260906w" />
+  <link rel="stylesheet" href="/styles.css?v=20260822u" />
+  <style>
+    body { background: var(--background); }
+    .pl-header {
+      position: sticky; top: 0; z-index: 10;
+      display: flex; align-items: center; gap: 8px;
+      padding: 12px 16px;
+      background: var(--header-bg);
+      backdrop-filter: blur(6px);
+      border-bottom: 1px solid var(--border);
+    }
+    .pl-title {
+      margin-right: auto;
+      font-size: 12.5px;
+      color: var(--muted-foreground);
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .search-wrap { width: 230px; position: relative; flex-shrink: 0; }
+    .icon-btn { width: 30px; height: 30px; }
+    .icon-btn:disabled { opacity: .45; cursor: default; }
+    .log-count { min-width: 48px; text-align: right; font-size: 12px; }
+    .pl-body { max-width: 1100px; margin: 0 auto; padding: 18px 20px 40px; }
+    .pl-lines { font-size: 12px; line-height: 1.75; color: var(--log-text, #b4b4b4); }
+    .pl-line { padding: 1px 0; white-space: pre-wrap; word-break: break-all; }
+    .pl-line:hover { background: var(--card); }
+    .hl { background: var(--mark-bg, #2c2c2c); color: inherit; border-radius: 2px; }
+    .hl.current { background: var(--primary); color: var(--primary-foreground); }
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: 4px; }
+    html.light { --log-text: #444444; --mark-bg: #e4e4e4; }
+  </style>
+  <script>
+    try {
+      if (localStorage.getItem("observec-theme") === "light") {
+        document.documentElement.classList.add("light");
+      }
+    } catch (e) {}
+  </script>
+</head>
+<body>
+  <header class="pl-header">
+    <span class="pl-title mono" id="pl-title">probe log</span>
+
+    <div class="search-wrap">
+      <svg class="icon search-icon" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+      <input id="pl-search" class="input search" type="search" placeholder="Search" autocomplete="off" />
+    </div>
+
+    <span id="pl-count" class="text-muted log-count"></span>
+
+    <button type="button" class="icon-btn" id="pl-prev" title="Previous match (Shift+Enter)" disabled>
+      <svg class="icon" viewBox="0 0 24 24"><path d="m18 15-6-6-6 6"/></svg>
+    </button>
+    <button type="button" class="icon-btn" id="pl-next" title="Next match (Enter)" disabled>
+      <svg class="icon" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg>
+    </button>
+
+    <button type="button" class="btn ghost sm" id="pl-copy">Copy</button>
+  </header>
+
+  <main class="pl-body">
+    <div id="pl-lines" class="pl-lines mono"></div>
+  </main>
+
+  <script>
+    (function () {
+      "use strict";
+
+      var params = new URLSearchParams(window.location.search);
+      var probeId = params.get("id") || "";
+      var moduleName = params.get("module") || "";
+
+      var rawLines = [];
+      var marks = [];
+      var current = -1;
+      var query = "";
+      var timer = null;
+
+      function $(id) { return document.getElementById(id); }
+
+      $("pl-title").textContent =
+        "probe #" + (probeId || "?") + (moduleName ? " \u00b7 " + moduleName : "");
+
+      /* ---------- load ---------- */
+
+      fetch("/blackbox/probe-log?id=" + encodeURIComponent(probeId))
+        .then(function (res) {
+          if (!res.ok) throw new Error("HTTP " + res.status);
+          return res.text();
+        })
+        .then(function (text) {
+          rawLines = text.split("\n");
+          if (rawLines.length && rawLines[rawLines.length - 1] === "") rawLines.pop();
+          render();
+        })
+        .catch(function (err) {
+          rawLines = ["failed to load probe log : " + err.message];
+          render();
+        });
+
+      /* ---------- render ---------- */
+
+      function render() {
+        var container = $("pl-lines");
+        container.innerHTML = "";
+
+        rawLines.forEach(function (text) {
+          var line = document.createElement("div");
+          line.className = "pl-line";
+          line.appendChild(document.createTextNode(text));
+          container.appendChild(line);
+        });
+
+        applyHighlight();
+      }
+
+      function applyHighlight() {
+        var rows = $("pl-lines").querySelectorAll(".pl-line");
+        marks = [];
+        current = -1;
+
+        Array.prototype.forEach.call(rows, function (row, index) {
+          var raw = rawLines[index] !== undefined ? rawLines[index] : "";
+          row.textContent = "";
+
+          if (!query) {
+            row.appendChild(document.createTextNode(raw));
+            return;
+          }
+
+          var lower = raw.toLowerCase();
+          var needle = query.toLowerCase();
+          var position = 0;
+          var found;
+
+          while ((found = lower.indexOf(needle, position)) !== -1) {
+            if (found > position) {
+              row.appendChild(document.createTextNode(raw.slice(position, found)));
+            }
+            var mark = document.createElement("mark");
+            mark.className = "hl";
+            mark.textContent = raw.slice(found, found + needle.length);
+            row.appendChild(mark);
+            marks.push(mark);
+            position = found + needle.length;
+          }
+          if (position < raw.length) {
+            row.appendChild(document.createTextNode(raw.slice(position)));
+          }
+        });
+
+        updateUi();
+      }
+
+      function updateUi() {
+        var total = marks.length;
+        $("pl-count").textContent = !query
+          ? ""
+          : (!total ? "no matches" : (current + 1) + "/" + total);
+        $("pl-prev").disabled = !total;
+        $("pl-next").disabled = !total;
+      }
+
+      function jump(direction) {
+        if (!marks.length) return;
+        if (current >= 0 && marks[current]) marks[current].classList.remove("current");
+        current = (current + direction + marks.length) % marks.length;
+        marks[current].classList.add("current");
+        marks[current].scrollIntoView({ block: "center" });
+        updateUi();
+      }
+
+      /* ---------- actions ---------- */
+
+      $("pl-search").addEventListener("input", function () {
+        var value = this.value.trim();
+        if (timer) clearTimeout(timer);
+        timer = setTimeout(function () {
+          query = value;
+          applyHighlight();
+        }, 160);
+      });
+
+      $("pl-search").addEventListener("keydown", function (event) {
+        if (event.key === "Enter") {
+          event.preventDefault();
+          jump(event.shiftKey ? -1 : 1);
+        }
+      });
+
+      $("pl-prev").addEventListener("click", function () { jump(-1); });
+      $("pl-next").addEventListener("click", function () { jump(1); });
+
+      $("pl-copy").addEventListener("click", function () {
+        var btn = this;
+        navigator.clipboard.writeText(rawLines.join("\n"))
+          .then(function () {
+            btn.textContent = "Copied";
+            setTimeout(function () { btn.textContent = "Copy"; }, 1500);
+          })
+          .catch(function () { btn.textContent = "Copy failed"; });
+      });
+    })();
+  </script>
+</body>
+</html>

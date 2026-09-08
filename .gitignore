@@ -1,0 +1,10 @@
+./observecData/*Data/* 
+.DS_Store
+DS_Store
+*DS_Store
+rough
+*rough
+target
+*target 
+./target
+*target/* 

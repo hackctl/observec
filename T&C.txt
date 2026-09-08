@@ -1,0 +1,122 @@
+TERMS AND CONDITIONS
+
+Product: observec — a self-hosted uptime monitoring control plane application, distributed as source code and a Dockerized JAR ("the Software")
+Vendor: hackctl, India ("Vendor," "we," "us")
+Contact: admin@hackctl.com
+Effective Date: September 12, 2026 (applies per Member from the date of purchase; Membership access is lifetime, revocable-only-for-cause — see Sections 1 and 5)
+Last Updated: September 12, 2026
+
+(C) 2026 hackctl. All rights reserved.
+
+These Terms and Conditions govern the purchase of a Membership for the Software. Your rights to use, modify, and distribute the Software itself are governed separately by the accompanying Software Licence Agreement (LICENCE.txt) — see Section 9 below. By purchasing a Membership, you agree to both documents in full.
+
+--------------------------------------------------------------------------------
+
+1. WHAT IS PURCHASED
+
+A Membership grants the Member:
+
+(a) Lifetime, revocable-only-for-cause access to the private GitHub repository containing the Software's source code ("the Repository"), subject to Section 5 and Section 6. The Repository is not public; access (an invitation to the Member's GitHub account) is provisioned only after payment is confirmed;
+(b) Access to all updates, patches, and releases published to the Repository during the period Vendor continues to maintain it (see Section 4);
+(c) The licence rights set out in the accompanying Software Licence Agreement, and no rights beyond those expressly granted there. For clarity, the licence covers Vendor's original logical codebase (the observecEngine Spring Boot application and the observecInterface web interface); Third-Party Components bundled in the Docker image or dependency tree (Prometheus, Blackbox Exporter, Alertmanager, base images, Maven/npm dependencies) remain under their own licences per LICENCE.txt Section 6A.
+
+No source code or files are transferred to Member-owned infrastructure as a condition of purchase; access is provided via the Repository, which the Member may clone or download for their own use in accordance with the Licence.
+
+--------------------------------------------------------------------------------
+
+2. PRICING AND PAYMENT
+
+The Membership fee is $50 USD, payable in full via the payment processor designated at checkout (e.g., Stripe / Gumroad / Lemon Squeezy). Pricing may change for future purchasers at Vendor's discretion; price changes do not affect Members who have already purchased.
+
+The Member is responsible for providing an accurate email address and GitHub username at checkout so Vendor can provision Repository access.
+
+--------------------------------------------------------------------------------
+
+3. ONE MEMBERSHIP, ONE SEAT
+
+Each Membership corresponds to exactly one Member account (one GitHub username granted Repository access). Multiple individuals within an organization who each need Repository access must each purchase a separate Membership, unless a Team/Organization licence is separately negotiated with Vendor in writing at admin@hackctl.com.
+
+--------------------------------------------------------------------------------
+
+4. REFUND POLICY
+
+Refund requests are honored if submitted within 14 calendar days of the purchase date, provided:
+
+(a) The refund request is made in good faith and is not submitted after Commercial Use of the Software has already occurred (as defined in the Software Licence Agreement); and
+(b) The Member has not violated the Software Licence Agreement.
+
+To request a refund, contact admin@hackctl.com from the purchase email address with the order/payment reference. Refunds are processed to the original payment method within a reasonable time, typically 5–10 business days. Upon a refund being issued, Vendor will revoke the Member's Repository access and the associated licence terminates immediately. No refunds are available after the 14-day window, regardless of usage level.
+
+--------------------------------------------------------------------------------
+
+5. MAINTENANCE, UPDATES, AND DISCONTINUATION
+
+(a) Vendor intends to continue publishing updates but makes no guarantee of update frequency, feature roadmap, or indefinite maintenance.
+(b) If Vendor discontinues active development, existing Members retain indefinite access to the Repository and all releases published up to the point of discontinuation. No further updates are owed thereafter.
+(c) If Vendor ceases operating entirely and can no longer host the Repository, Vendor will make reasonable efforts to provide a final downloadable archive of the Repository to all active Members prior to shutdown, but is not obligated to do so if prevented by circumstances outside its control.
+
+--------------------------------------------------------------------------------
+
+6. SUSPENSION AND TERMINATION OF ACCESS
+
+Vendor may suspend or permanently revoke a Member's Repository access, without refund, if:
+
+(a) The Member breaches the Software Licence Agreement;
+(b) The Member's payment is reversed, charged back, or found fraudulent;
+(c) The Member shares, sells, or transfers their account credentials or Repository access to another person or entity without Vendor's written consent.
+
+Vendor will provide written notice of the alleged breach and, except in cases of (b) or repeated/willful violations, a 14-day cure period before permanent revocation, where the breach is reasonably curable.
+
+--------------------------------------------------------------------------------
+
+7. NO WARRANTY; NO SLA
+
+THE SOFTWARE IS PROVIDED "AS IS" AND "AS AVAILABLE," WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, NON-INFRINGEMENT, OR THAT THE SOFTWARE WILL BE ERROR-FREE, SECURE, OR UNINTERRUPTED. Vendor does not guarantee any uptime, response time, or support service level for the Software itself or for support requests. Any support provided (via email, GitHub Issues, Discord, or otherwise) is offered on a best-effort, discretionary basis and does not constitute a binding service commitment.
+
+--------------------------------------------------------------------------------
+
+8. LIMITATION OF LIABILITY
+
+TO THE MAXIMUM EXTENT PERMITTED BY APPLICABLE LAW, VENDOR'S TOTAL AGGREGATE LIABILITY ARISING OUT OF OR RELATED TO THIS AGREEMENT OR THE SOFTWARE SHALL NOT EXCEED THE AMOUNT ACTUALLY PAID BY THE MEMBER FOR THE MEMBERSHIP (I.E., $50 USD). IN NO EVENT SHALL VENDOR BE LIABLE FOR ANY INDIRECT, INCIDENTAL, CONSEQUENTIAL, SPECIAL, EXEMPLARY, OR PUNITIVE DAMAGES, INCLUDING BUT NOT LIMITED TO LOSS OF PROFITS, DATA, BUSINESS INTERRUPTION, OR DOWNTIME OF ANY MONITORED SYSTEM, EVEN IF VENDOR HAS BEEN ADVISED OF THE POSSIBILITY OF SUCH DAMAGES. This limitation applies regardless of the legal theory of liability (contract, tort, negligence, or otherwise).
+
+--------------------------------------------------------------------------------
+
+9. RELATIONSHIP TO THE SOFTWARE LICENCE
+
+Your rights to use, modify, and (in limited cases) distribute the Software are governed by the accompanying Software Licence Agreement (LICENCE.txt), not by these Terms. In the event of a conflict between the two documents regarding usage rights, the Software Licence Agreement controls; regarding the purchase transaction itself (payment, refunds, access provisioning), these Terms control.
+
+--------------------------------------------------------------------------------
+
+10. INDEMNIFICATION
+
+The Member agrees to indemnify, defend, and hold harmless the Vendor from any claims, damages, liabilities, costs, and expenses (including reasonable legal fees) arising from: (a) the Member's breach of these Terms or the Software Licence Agreement; (b) the Member's unauthorized Commercial Use of the Software; or (c) the Member's use of the Software in a manner that infringes the rights of, or causes harm to, any third party.
+
+--------------------------------------------------------------------------------
+
+11. TAXES
+
+The Membership price is exclusive of any applicable taxes (e.g., GST). The Member is responsible for any taxes owed in connection with the purchase, other than taxes on Vendor's net income.
+
+--------------------------------------------------------------------------------
+
+12. ASSIGNMENT
+
+The Member may not assign or transfer this Agreement or the rights granted herein without Vendor's prior written consent, except as permitted for organizational succession under the Software Licence Agreement. Vendor may assign this Agreement in connection with a merger, acquisition, or sale of substantially all its assets, provided the acquiring party agrees to honor existing Members' access rights under Section 5.
+
+--------------------------------------------------------------------------------
+
+13. GOVERNING LAW AND DISPUTE RESOLUTION
+
+This Agreement is governed by the laws of India, without regard to conflict-of-law principles. Any dispute arising out of or relating to this Agreement shall be subject to the exclusive jurisdiction of the courts at the Vendor's home jurisdiction in India. The parties agree to first attempt to resolve any dispute informally by written notice to admin@hackctl.com and a 30-day good-faith negotiation period before initiating formal proceedings.
+
+--------------------------------------------------------------------------------
+
+14. ENTIRE AGREEMENT; SEVERABILITY; AMENDMENTS
+
+These Terms, together with the Software Licence Agreement, constitute the entire agreement between the parties regarding the Software and supersede any prior agreements or representations. If any provision is found unenforceable, the remaining provisions remain in full force, and the unenforceable provision shall be reformed to the minimum extent necessary to make it enforceable while preserving its intent. Vendor may update these Terms for future purchasers by posting a revised version; changes will not retroactively remove rights already granted to existing Members under the version they purchased under, except where required to comply with law.
+
+--------------------------------------------------------------------------------
+
+CONTACT
+
+For access provisioning, refunds, support, or general inquiries: admin@hackctl.com. Include your order reference and GitHub username.

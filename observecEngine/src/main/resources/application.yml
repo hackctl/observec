@@ -1,0 +1,25 @@
+server:
+  error:
+    include-message: always
+spring:
+  datasource:
+    url: jdbc:sqlite:${observec.auth.db-path:/observec/observecData/users.db}
+    driver-class-name: org.sqlite.JDBC
+    hikari:
+      maximum-pool-size: 1
+      connection-test-query: SELECT 1
+  servlet:
+    multipart:
+      max-file-size: 5MB
+      max-request-size: 15MB
+  web:
+    resources:
+      cache:
+        cachecontrol:
+          no-cache: true
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
+observec:
+  auth:
+    db-path: ${OBSERVEC_AUTH_DB_PATH:/observec/observecData/users.db}
