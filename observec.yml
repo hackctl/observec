@@ -4,6 +4,7 @@ volumes:
 
 services:
   observec:
+    privileged: true
     build:
       context: .
       dockerfile: Dockerfile

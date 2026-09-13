@@ -1,0 +1,11 @@
+# Stale build output must not enter the image. COPY brings it in as a lower
+# layer and `mvn clean` then has to delete across layers (overlay whiteouts),
+# which fails on restricted hosts. Fresh `mvn package` recreates it anyway.
+observecEngine/target/
+# Git metadata is large and never needed inside the image.
+.git/
+# Local junk / OS files.
+rough
+.DS_Store
+# Future-proof: never ship node modules into the image.
+observecInterface/node_modules/
