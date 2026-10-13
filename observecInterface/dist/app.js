@@ -126,12 +126,19 @@
      overlay click or Escape. */
   var confirmResolver = null;
 
-  function uiConfirm(message) {
+  function uiConfirm(message, opts) {
+    opts = opts || {};
     return new Promise(function (resolve) {
       if (confirmResolver) {
         try { confirmResolver(false); } catch (e) {}
       }
       confirmResolver = resolve;
+      $("confirm-title").textContent = opts.title || "Confirm delete";
+      var okBtn = $("confirm-ok");
+      if (okBtn) {
+        okBtn.textContent = opts.okLabel || "Delete";
+        okBtn.className = "btn " + (opts.danger === false ? "primary" : "danger");
+      }
       $("confirm-message").textContent = message;
       $("confirm-overlay").classList.remove("hidden");
       $("confirm-dialog").classList.remove("hidden");
@@ -1134,21 +1141,83 @@
     }).join("\n");
   }
 
+  var CONFIG_FILENAMES = {
+    "config-yaml": "blackboxConfig.yml",
+    "prom-config-yaml": "prometheusConfig.yml",
+    "am-config-yaml": "alertmanagerConfig.yml",
+  };
+
   function renderConfigYaml(targetId, yaml) {
     var el = $(targetId);
     if (!el) return;
     el.dataset.rawYaml = yaml;
-    el.innerHTML = highlightYaml(yaml);
+    if (!el.dataset.editorBuilt) {
+      el.dataset.editorBuilt = "true";
+      el.innerHTML =
+        '<div class="editor-tab"><span class="editor-dot"></span>' +
+        '<span class="editor-tab-name"></span><span class="editor-lang">YAML</span></div>' +
+        '<div class="editor-body"></div>' +
+        '<div class="editor-status"><span class="editor-lines"></span><span>read-only</span></div>';
+      var tabName = el.querySelector(".editor-tab-name");
+      if (tabName) tabName.textContent = CONFIG_FILENAMES[targetId] || "config.yml";
+    }
+    var highlighted = highlightYaml(yaml).split("\n");
+    var body = el.querySelector(".editor-body");
+    if (body) {
+      body.innerHTML = highlighted.map(function (code, i) {
+        return '<div class="yaml-line"><span class="yaml-ln">' + (i + 1) +
+          '</span><span class="yaml-code">' + (code || "") + "</span></div>";
+      }).join("");
+    }
+    var linesEl = el.querySelector(".editor-lines");
+    if (linesEl) linesEl.textContent = highlighted.length + (highlighted.length === 1 ? " line" : " lines");
   }
 
   function loadConfigText(component) {
     var targetId = CONFIG_TARGETS[component];
     if (!targetId) return Promise.resolve();
+    refreshConfigCommitTag(component);
     return api("/" + component + "/config")
       .then(function (yaml) {
         renderConfigYaml(targetId, yaml);
       })
       .catch(function (err) { toast(err.message, true); });
+  }
+
+  var CONFIG_COMMIT_EL = {
+    blackbox: "blackbox-commit",
+    prometheus: "prom-commit",
+    alertmanager: "am-commit",
+  };
+  var CONFIG_COMMIT_MATCH = {
+    blackbox: /blackbox/i,
+    prometheus: /prometheus/i,
+    alertmanager: /alertmanager/i,
+  };
+
+  function refreshConfigCommitTag(component) {
+    var el = $(CONFIG_COMMIT_EL[component]);
+    if (!el) return Promise.resolve();
+    return api("/git/log")
+      .then(function (text) {
+        var data = JSON.parse(text);
+        var commits = (data && data.commits) || [];
+        var rx = CONFIG_COMMIT_MATCH[component];
+        var found = null;
+        for (var i = 0; i < commits.length; i++) {
+          if (rx.test(commits[i].message || "")) { found = commits[i]; break; }
+        }
+        if (!found && commits.length) found = commits[0];
+        if (found) {
+          var label = (found.shortHash || (found.hash || "").substring(0, 7)) + " · " + (found.message || "");
+          el.textContent = label;
+          el.setAttribute("data-action-tip", label);
+        } else {
+          el.textContent = "";
+          el.removeAttribute("data-action-tip");
+        }
+      })
+      .catch(function () {});
   }
 
   function copyConfigText(targetId) {
@@ -1353,8 +1422,10 @@
       tdLogs.className = "col-actions-cell";
       var logsBtn = document.createElement("button");
       logsBtn.type = "button";
-      logsBtn.className = "btn ghost sm";
-      logsBtn.textContent = "Logs";
+      logsBtn.className = "btn ghost sm icon-only";
+      logsBtn.setAttribute("data-action-tip", "View logs");
+      logsBtn.setAttribute("aria-label", "View logs");
+      logsBtn.innerHTML = '<svg class="icon" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>';
       logsBtn.addEventListener("click", function () { openProbeLog(probe.logId, probe.module, probe.target); });
       tdLogs.appendChild(logsBtn);
       row.appendChild(tdLogs);
@@ -6547,9 +6618,10 @@
         applyBtn.textContent = "Apply";
         applyBtn.title = "Apply this commit to top (cherry-pick)";
         applyBtn.addEventListener("click", function () {
-          if (!confirm("Apply commit " + c.shortHash + " to top? This will create a new commit with same content on HEAD.")) return;
-          applyBtn.disabled = true;
-          applyBtn.textContent = "Applying...";
+          uiConfirm("Apply commit " + (c.shortHash || c.hash.substring(0, 7)) + " to top?\n\n" + (c.message || ""), { title: "Apply commit", okLabel: "Apply", danger: false }).then(function (ok) {
+            if (!ok) return;
+            applyBtn.disabled = true;
+            applyBtn.textContent = "Applying...";
           api("/git/apply", { method: "POST", body: JSON.stringify({ hash: c.hash }) })
             .then(function (text) {
               var data = JSON.parse(text);
@@ -6559,6 +6631,7 @@
             })
             .catch(function (err) { toast(err.message, true); })
             .finally(function () { applyBtn.disabled = false; applyBtn.textContent = "Apply"; });
+          });
         });
         tdAct.appendChild(applyBtn);
         tr.appendChild(tdAct);

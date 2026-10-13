@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&display=swap" />
-  <link rel="stylesheet" href="/styles.css?v=20261013a" />
+  <link rel="stylesheet" href="/styles.css?v=20261013e" />
   <script>
     try {
       var t = localStorage.getItem("observec-theme") || localStorage.getItem("observec-appearance-theme") || "black";
@@ -59,7 +59,7 @@
         <nav class="sidebar-nav">
 
           <div class="sidebar-group" data-sidebar-group="observe">
-            <span class="sidebar-group-label">Observe</span>
+            <span class="sidebar-group-label"></span>
             <div class="sidebar-group-content">
           <div class="nav-group" data-nav-group="monitors" data-open="true">
             <button type="button" class="nav-item active" data-component="monitors" title="Monitors" aria-expanded="true">
@@ -144,7 +144,7 @@
           </div>
 
           <div class="sidebar-group" data-sidebar-group="system">
-            <span class="sidebar-group-label">System</span>
+            <span class="sidebar-group-label"></span>
             <div class="sidebar-group-content">
           <div class="nav-group" data-nav-group="changelog" data-open="true">
             <button type="button" class="nav-item" data-component="changelog" title="Changelog" aria-expanded="true">
@@ -398,7 +398,7 @@
     <div id="section-config" class="config-part hidden">
       <div class="section-header config-header">
         <h2 class="panel-heading">Config</h2>
-        <span class="config-filename mono">blackboxConfig.yml</span>
+        <span id="blackbox-commit" class="commit-tag text-muted"></span>
         <div class="toolbar-spacer"></div>
         <label class="switch-wrap" title="Enable / Disable blackbox exporter"><input type="checkbox" class="blackbox-toggle-btn"><span class="switch"></span></label>
         <button class="btn ghost icon-only blackbox-reload-btn" title="Reload blackbox exporter">
@@ -410,7 +410,7 @@
       </div>
       <div class="config-shell">
         <div class="config-card">
-          <pre id="config-yaml" class="yaml-view mono" spellcheck="false"></pre>
+          <div id="config-yaml" class="yaml-view mono" spellcheck="false"></div>
         </div>
       </div>
     </div>
@@ -559,7 +559,7 @@
         <div id="section-prom-config" class="config-part hidden">
           <div class="section-header config-header">
             <h2 class="panel-heading">Config</h2>
-            <span class="config-filename mono">prometheusConfig.yml</span>
+            <span id="prom-commit" class="commit-tag text-muted"></span>
             <div class="toolbar-spacer"></div>
             <label class="switch-wrap" title="Enable / Disable Prometheus"><input type="checkbox" class="prom-toggle-btn"><span class="switch"></span></label>
             <button class="btn ghost icon-only prom-reload-btn" title="Reload or start Prometheus">
@@ -571,7 +571,7 @@
           </div>
           <div class="config-shell">
             <div class="config-card">
-              <pre id="prom-config-yaml" class="yaml-view mono" spellcheck="false"></pre>
+              <div id="prom-config-yaml" class="yaml-view mono" spellcheck="false"></div>
             </div>
           </div>
         </div>
@@ -763,7 +763,7 @@
         <div id="section-am-config" class="config-part hidden">
           <div class="section-header config-header">
             <h2 class="panel-heading">Config</h2>
-            <span class="config-filename mono">alertmanagerConfig.yml</span>
+            <span id="am-commit" class="commit-tag text-muted"></span>
             <div class="toolbar-spacer"></div>
             <label class="switch-wrap" title="Enable / Disable Alertmanager"><input type="checkbox" class="am-toggle-btn"><span class="switch"></span></label>
             <button class="btn ghost icon-only am-reload-btn" title="Reload Alertmanager">
@@ -775,7 +775,7 @@
           </div>
           <div class="config-shell">
             <div class="config-card">
-              <pre id="am-config-yaml" class="yaml-view mono" spellcheck="false"></pre>
+              <div id="am-config-yaml" class="yaml-view mono" spellcheck="false"></div>
             </div>
           </div>
         </div>
@@ -1485,6 +1485,6 @@
     </div>
   </div>
 
-  <script src="/app.js?v=20261013b"></script>
+  <script src="/app.js?v=20261013e"></script>
 </body>
 </html>
