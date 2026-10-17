@@ -44,11 +44,20 @@ jobs:
             type=ref,event=branch
             type=sha
             type=raw,value=latest,enable={{is_default_branch}}
+          labels: |
+            org.opencontainers.image.title=observec
+            org.opencontainers.image.description=Open-source observability platform bundling Prometheus, Blackbox Exporter, Alertmanager, and a Spring-based engine with web UI
+            org.opencontainers.image.authors=myselfakashagarwal <myselfakashagarwal@gmail.com>
+            org.opencontainers.image.url=https://observec.hackctl.com
+            org.opencontainers.image.source=https://github.com/hackctl/observec
+            org.opencontainers.image.licenses=MIT
+            org.opencontainers.image.vendor=hackctl
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v6
         with:
           context: .
+          platforms: linux/amd64,linux/arm64
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}

@@ -27,6 +27,14 @@ ENV PATH="/observec/bin:${PATH}"
 
 COPY --from=enginebuilder /observec/observecEngine/target/observec.jar /observec/observec.jar
 
+LABEL org.opencontainers.image.title="observec" \
+      org.opencontainers.image.description="Open-source observability platform bundling Prometheus, Blackbox Exporter, Alertmanager, and a Spring-based engine with web UI" \
+      org.opencontainers.image.authors="myselfakashagarwal <myselfakashagarwal@gmail.com>" \
+      org.opencontainers.image.url="https://observec.hackctl.com" \
+      org.opencontainers.image.source="https://github.com/hackctl/observec" \
+      org.opencontainers.image.licenses="MIT" \
+      org.opencontainers.image.vendor="hackctl"
+
 EXPOSE 8080 8081 9090 9115 9093
 
 ENTRYPOINT ["java", "-jar", "/observec/observec.jar"]

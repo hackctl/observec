@@ -6,12 +6,20 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>observec</title>
   <link rel="icon" type="image/png" href="/observec.png?v=20260906w" />
-  <link rel="stylesheet" href="/styles.css?v=20260906v" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&display=swap" />
+  <link rel="stylesheet" href="/styles.css?v=20261013e" />
   <script>
     try {
-      if (localStorage.getItem("observec-theme") === "light") {
-        document.documentElement.classList.add("light");
-      }
+      var t = localStorage.getItem("observec-theme") || localStorage.getItem("observec-appearance-theme") || "black";
+      if (t === "light") t = "white";
+      if (t === "dark") t = "black";
+      if (t !== "grey" && t !== "black" && t !== "white") t = "black";
+      document.documentElement.dataset.theme = t;
+      document.documentElement.classList.toggle("light", t === "white");
+      var a = localStorage.getItem("observec-accent") || "orange";
+      document.documentElement.dataset.accent = a;
     } catch (e) {}
   </script>
 </head>
@@ -21,7 +29,7 @@
       <span class="crumb">observec</span>
     </div>
     <div class="header-actions">
-      <button type="button" id="theme-toggle" class="icon-btn" title="Toggle black / white theme">
+      <button type="button" id="theme-toggle" class="icon-btn" title="Cycle theme (grey / black / white)">
         <svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 1 0 18Z" fill="currentColor" stroke="none"/></svg>
       </button>
       <div id="user-menu-wrap" class="user-menu-wrap hidden">
@@ -33,7 +41,6 @@
             <span id="dropdown-username" class="mono" style="font-weight:600;"></span>
             <span id="dropdown-email" class="text-muted" style="font-size:11px;"></span>
           </div>
-          <button type="button" id="dropdown-switch" class="dropdown-item">Sign in as other user</button>
           <button type="button" id="dropdown-logout" class="dropdown-item danger">Sign out</button>
         </div>
       </div>
@@ -43,9 +50,17 @@
   <div class="layout" id="layout">
 
     <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <button type="button" id="sidebar-trigger" class="icon-btn" title="Toggle sidebar (Ctrl+B)">
+          <svg class="icon" id="sidebar-trigger-icon" viewBox="0 0 24 24"><path d="m11 17-5-5 5-5"/><path d="m18 17-5-5 5-5"/></svg>
+        </button>
+      </div>
       <div class="sidebar-content">
         <nav class="sidebar-nav">
 
+          <div class="sidebar-group" data-sidebar-group="observe">
+            <span class="sidebar-group-label"></span>
+            <div class="sidebar-group-content">
           <div class="nav-group" data-nav-group="monitors" data-open="true">
             <button type="button" class="nav-item active" data-component="monitors" title="Monitors" aria-expanded="true">
               <svg class="icon" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="13" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
@@ -125,6 +140,12 @@
             </div>
           </div>
 
+          </div>
+          </div>
+
+          <div class="sidebar-group" data-sidebar-group="system">
+            <span class="sidebar-group-label"></span>
+            <div class="sidebar-group-content">
           <div class="nav-group" data-nav-group="changelog" data-open="true">
             <button type="button" class="nav-item" data-component="changelog" title="Changelog" aria-expanded="true">
               <svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/><path d="M16 12a4 4 0 0 0-4-4"/></svg>
@@ -155,12 +176,31 @@
             </div>
           </div>
 
+          <div class="nav-group" data-nav-group="appearance" data-open="true">
+            <button type="button" class="nav-item" data-component="appearance" title="System Themes" aria-expanded="true">
+              <svg class="icon" viewBox="0 0 24 24"><path d="M12 22a7 7 0 0 0 7-7c0-2-1-3.9-3-5.5s-3.5-4-4-6.5c-.5 2.5-2 4.9-4 6.5C6 11.1 5 13 5 15a7 7 0 0 0 7 7z"/></svg>
+              <span class="nav-label">System Themes</span>
+              <svg class="icon chevron" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg>
+            </button>
+            <div class="nav-sub" data-component-sub="appearance">
+              <div class="nav-sub-clip">
+                <div class="nav-sub-inner">
+                  <button type="button" class="nav-subitem" id="nav-appearance-btn">Themes</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+            </div>
+          </div>
+
         </nav>
       </div>
 
       <div class="sidebar-footer">
         <span id="engine-status" class="badge muted">checking...</span>
       </div>
+      <div class="sidebar-rail" id="sidebar-rail" title="Toggle sidebar"></div>
     </aside>
 
     <main class="content">
@@ -358,17 +398,19 @@
     <div id="section-config" class="config-part hidden">
       <div class="section-header config-header">
         <h2 class="panel-heading">Config</h2>
-        <span class="config-filename mono">blackboxConfig.yml</span>
+        <span id="blackbox-commit" class="commit-tag text-muted"></span>
         <div class="toolbar-spacer"></div>
         <label class="switch-wrap" title="Enable / Disable blackbox exporter"><input type="checkbox" class="blackbox-toggle-btn"><span class="switch"></span></label>
         <button class="btn ghost icon-only blackbox-reload-btn" title="Reload blackbox exporter">
           <svg class="icon" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg>
         </button>
-        <button type="button" class="btn ghost sm" id="config-copy">Copy</button>
+            <button type="button" class="btn ghost icon-only" id="config-copy" data-action-tip="Copy" aria-label="Copy">
+              <svg class="icon" viewBox="0 0 24 24"><rect width="14" height="14" x="8" y="8" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+            </button>
       </div>
       <div class="config-shell">
         <div class="config-card">
-          <pre id="config-yaml" class="yaml-view mono" spellcheck="false"></pre>
+          <div id="config-yaml" class="yaml-view mono" spellcheck="false"></div>
         </div>
       </div>
     </div>
@@ -517,17 +559,19 @@
         <div id="section-prom-config" class="config-part hidden">
           <div class="section-header config-header">
             <h2 class="panel-heading">Config</h2>
-            <span class="config-filename mono">prometheusConfig.yml</span>
+            <span id="prom-commit" class="commit-tag text-muted"></span>
             <div class="toolbar-spacer"></div>
             <label class="switch-wrap" title="Enable / Disable Prometheus"><input type="checkbox" class="prom-toggle-btn"><span class="switch"></span></label>
             <button class="btn ghost icon-only prom-reload-btn" title="Reload or start Prometheus">
               <svg class="icon" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg>
             </button>
-            <button type="button" class="btn ghost sm" id="prom-config-copy">Copy</button>
+            <button type="button" class="btn ghost icon-only" id="prom-config-copy" data-action-tip="Copy" aria-label="Copy">
+              <svg class="icon" viewBox="0 0 24 24"><rect width="14" height="14" x="8" y="8" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+            </button>
           </div>
           <div class="config-shell">
             <div class="config-card">
-              <pre id="prom-config-yaml" class="yaml-view mono" spellcheck="false"></pre>
+              <div id="prom-config-yaml" class="yaml-view mono" spellcheck="false"></div>
             </div>
           </div>
         </div>
@@ -613,7 +657,9 @@
             <button class="btn ghost icon-only am-reload-btn" title="Reload Alertmanager">
               <svg class="icon" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg>
             </button>
-            <button type="button" class="btn ghost sm" id="routes-save-btn">Save routes</button>
+            <button type="button" class="btn ghost icon-only" id="routes-save-btn" data-action-tip="Save routes" aria-label="Save routes">
+              <svg class="icon" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg>
+            </button>
           </div>
 
           <div class="table-card">
@@ -670,7 +716,9 @@
             <button class="btn ghost icon-only am-reload-btn" title="Reload Alertmanager">
               <svg class="icon" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg>
             </button>
-            <button type="button" class="btn ghost sm" id="am-notifications-refresh">Refresh</button>
+            <button type="button" class="btn ghost icon-only" id="am-notifications-refresh" data-action-tip="Refresh" aria-label="Refresh">
+              <svg class="icon" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg>
+            </button>
           </div>
           <div class="logs-shell">
             <div class="logs-card">
@@ -715,17 +763,19 @@
         <div id="section-am-config" class="config-part hidden">
           <div class="section-header config-header">
             <h2 class="panel-heading">Config</h2>
-            <span class="config-filename mono">alertmanagerConfig.yml</span>
+            <span id="am-commit" class="commit-tag text-muted"></span>
             <div class="toolbar-spacer"></div>
             <label class="switch-wrap" title="Enable / Disable Alertmanager"><input type="checkbox" class="am-toggle-btn"><span class="switch"></span></label>
             <button class="btn ghost icon-only am-reload-btn" title="Reload Alertmanager">
               <svg class="icon" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg>
             </button>
-            <button type="button" class="btn ghost sm" id="am-config-copy">Copy</button>
+            <button type="button" class="btn ghost icon-only" id="am-config-copy" data-action-tip="Copy" aria-label="Copy">
+              <svg class="icon" viewBox="0 0 24 24"><rect width="14" height="14" x="8" y="8" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+            </button>
           </div>
           <div class="config-shell">
             <div class="config-card">
-              <pre id="am-config-yaml" class="yaml-view mono" spellcheck="false"></pre>
+              <div id="am-config-yaml" class="yaml-view mono" spellcheck="false"></div>
             </div>
           </div>
         </div>
@@ -739,16 +789,14 @@
             <span id="git-branch" class="badge muted"></span>
             <span id="git-remote" class="text-muted" style="font-size:11px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:260px;"></span>
             <div class="toolbar-spacer"></div>
-            <button class="btn ghost sm" id="changelog-refresh-btn" title="Refresh history">
+            <button class="btn ghost icon-only" id="changelog-refresh-btn" data-action-tip="Refresh history" aria-label="Refresh history">
               <svg class="icon" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg>
             </button>
-            <button class="btn ghost sm" id="git-pull-btn" title="Pull from remote">
+            <button class="btn ghost icon-only" id="git-pull-btn" data-action-tip="Pull from remote" aria-label="Pull from remote">
               <svg class="icon" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></svg>
-              Pull
             </button>
-            <button class="btn primary sm" id="git-push-btn" title="Push to remote">
+            <button class="btn primary icon-only" id="git-push-btn" data-action-tip="Push to remote" aria-label="Push to remote">
               <svg class="icon" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M17 8l-5-5-5 5"/><path d="M12 3v12"/></svg>
-              Push
             </button>
           </div>
           <div class="table-card">
@@ -1397,9 +1445,46 @@
     </form>
   </div>
 
+  <div id="settings-dialog" class="dialog hidden" role="dialog" aria-modal="true" aria-labelledby="settings-dialog-title">
+    <div class="dialog-header">
+      <h3 id="settings-dialog-title">Appearance</h3>
+    </div>
+    <form id="settings-form" novalidate>
+      <div style="padding: 18px 24px 20px;">
+        <div class="appearance-group">
+          <span class="appearance-label">Theme</span>
+          <div class="theme-options" id="theme-options" role="group" aria-label="Theme">
+            <button type="button" class="chip" data-theme-option="grey">Grey</button>
+            <button type="button" class="chip" data-theme-option="black">Black</button>
+            <button type="button" class="chip" data-theme-option="white">White</button>
+          </div>
+        </div>
+        <div class="appearance-group">
+          <span class="appearance-label">Accent</span>
+          <div class="accent-grid" id="accent-grid" role="group" aria-label="Accent"></div>
+        </div>
+      </div>
+      <div class="dialog-footer" style="margin-top:0;">
+        <button type="button" class="btn ghost" id="settings-close">Close</button>
+      </div>
+    </form>
+  </div>
+
   <div id="toasts" class="toasts"></div>
   <div id="row-menu" class="row-menu hidden"></div>
 
-  <script src="/app.js?v=20260906x"></script>
+  <div id="confirm-overlay" class="overlay hidden"></div>
+  <div id="confirm-dialog" class="dialog hidden" role="alertdialog" aria-modal="true" aria-labelledby="confirm-title">
+    <div class="dialog-header">
+      <h3 id="confirm-title">Confirm delete</h3>
+      <p id="confirm-message" class="text-muted"></p>
+    </div>
+    <div class="dialog-footer confirm-footer">
+      <button type="button" class="btn ghost" id="confirm-cancel">Cancel</button>
+      <button type="button" class="btn danger" id="confirm-ok">Delete</button>
+    </div>
+  </div>
+
+  <script src="/app.js?v=20261013e"></script>
 </body>
 </html>

@@ -121,9 +121,287 @@
     setTimeout(function () { el.remove(); }, 4000);
   }
 
+  /* Themed confirm (replaces native window.confirm so deletes follow
+     the interface theme). Resolves true on Delete, false on Cancel,
+     overlay click or Escape. */
+  var confirmResolver = null;
+
+  function uiConfirm(message, opts) {
+    opts = opts || {};
+    return new Promise(function (resolve) {
+      if (confirmResolver) {
+        try { confirmResolver(false); } catch (e) {}
+      }
+      confirmResolver = resolve;
+      $("confirm-title").textContent = opts.title || "Confirm delete";
+      var okBtn = $("confirm-ok");
+      if (okBtn) {
+        okBtn.textContent = opts.okLabel || "Delete";
+        okBtn.className = "btn " + (opts.danger === false ? "primary" : "danger");
+      }
+      $("confirm-message").textContent = message;
+      $("confirm-overlay").classList.remove("hidden");
+      $("confirm-dialog").classList.remove("hidden");
+      var cancel = $("confirm-cancel");
+      if (cancel) cancel.focus();
+    });
+  }
+
+  function settleConfirm(ok) {
+    var overlay = $("confirm-overlay"), dialog = $("confirm-dialog");
+    if (overlay) overlay.classList.add("hidden");
+    if (dialog) dialog.classList.add("hidden");
+    var pending = confirmResolver;
+    confirmResolver = null;
+    if (pending) {
+      try { pending(!!ok); } catch (e) {}
+    }
+  }
+
+  if ($("confirm-cancel")) $("confirm-cancel").addEventListener("click", function () { settleConfirm(false); });
+  if ($("confirm-ok")) $("confirm-ok").addEventListener("click", function () { settleConfirm(true); });
+  if ($("confirm-overlay")) $("confirm-overlay").addEventListener("click", function () { settleConfirm(false); });
+
   $("theme-toggle").addEventListener("click", function () {
-    var light = document.documentElement.classList.toggle("light");
-    localStorage.setItem("observec-theme", light ? "light" : "dark");
+    cycleTheme();
+  });
+
+  /* Appearance — themes + accents from style.hackctl.com.
+     Themes: grey / black / white. Accents: green, blue, red, yellow,
+     orange, purple, pink. Accent drives --acc/--primary/--success;
+     ok/info/err/warn stay fixed per theme (green/blue/red/yellow). */
+  var APPEARANCE_THEMES = ["grey", "black", "white"];
+  var APPEARANCE_ACCENTS = [
+    { name: "green", label: "Green", dark: "#5ee08a", greyDim: "#1f3125", blackDim: "#0d1f13", light: "#0f7a3a", lightDim: "#e7f0eb" },
+    { name: "blue", label: "Blue", dark: "#5b9dff", greyDim: "#1f2836", blackDim: "#0d1624", light: "#2260cf", lightDim: "#e9eef7" },
+    { name: "red", label: "Red", dark: "#ff5555", greyDim: "#361e1e", blackDim: "#240c0c", light: "#c92a2a", lightDim: "#f6e9e9" },
+    { name: "yellow", label: "Yellow", dark: "#f2c94c", greyDim: "#342e1d", blackDim: "#221c0b", light: "#7f5f00", lightDim: "#f0eee6" },
+    { name: "orange", label: "Orange", dark: "#ff9640", greyDim: "#36271b", blackDim: "#241509", light: "#a84c00", lightDim: "#f3ece6" },
+    { name: "purple", label: "Purple", dark: "#b48cff", greyDim: "#2b2636", blackDim: "#191424", light: "#6a42d0", lightDim: "#eeebf7" },
+    { name: "pink", label: "Pink", dark: "#ff7ac6", greyDim: "#36232e", blackDim: "#24111c", light: "#b82c74", lightDim: "#f5eaef" },
+  ];
+
+  function normalizeTheme(value) {
+    if (value === "light") return "white";
+    if (value === "dark") return "black";
+    if (value === "grey" || value === "black" || value === "white") return value;
+    return "black";
+  }
+
+  function normalizeAccent(value) {
+    value = String(value || "").toLowerCase();
+    for (var i = 0; i < APPEARANCE_ACCENTS.length; i++) {
+      if (APPEARANCE_ACCENTS[i].name === value) return value;
+    }
+    return "orange";
+  }
+
+  function accentByName(name) {
+    for (var i = 0; i < APPEARANCE_ACCENTS.length; i++) {
+      if (APPEARANCE_ACCENTS[i].name === name) return APPEARANCE_ACCENTS[i];
+    }
+    return APPEARANCE_ACCENTS[0];
+  }
+
+  function hexToRgb(hex) {
+    hex = String(hex || "").replace("#", "");
+    if (hex.length === 3) hex = hex[0] + hex[0] + hex[1] + hex[1] + hex[2] + hex[2];
+    return [
+      parseInt(hex.slice(0, 2), 16),
+      parseInt(hex.slice(2, 4), 16),
+      parseInt(hex.slice(4, 6), 16),
+    ];
+  }
+
+  function rgbToHex(rgb) {
+    function part(n) {
+      n = Math.max(0, Math.min(255, Math.round(n)));
+      var h = n.toString(16);
+      return h.length === 1 ? "0" + h : h;
+    }
+    return "#" + part(rgb[0]) + part(rgb[1]) + part(rgb[2]);
+  }
+
+  function mixHex(accHex, brightHex, accShare) {
+    var a = hexToRgb(accHex), b = hexToRgb(brightHex);
+    return rgbToHex([
+      a[0] * accShare + b[0] * (1 - accShare),
+      a[1] * accShare + b[1] * (1 - accShare),
+      a[2] * accShare + b[2] * (1 - accShare),
+    ]);
+  }
+
+  function getAppearance() {
+    var theme = "black", accent = "orange";
+    try {
+      theme = normalizeTheme(
+        localStorage.getItem("observec-theme") || localStorage.getItem("observec-appearance-theme") || "black"
+      );
+      accent = normalizeAccent(localStorage.getItem("observec-accent") || "orange");
+    } catch (e) {}
+    return { theme: theme, accent: accent };
+  }
+
+  function applyAppearance(theme, accent, persist) {
+    theme = normalizeTheme(theme);
+    accent = normalizeAccent(accent);
+    var root = document.documentElement;
+    var entry = accentByName(accent);
+    var isWhite = theme === "white";
+
+    root.dataset.theme = theme;
+    root.dataset.accent = accent;
+    root.classList.toggle("light", isWhite);
+
+    var acc = isWhite ? entry.light : entry.dark;
+    var accDim = isWhite ? entry.lightDim : (theme === "grey" ? entry.greyDim : entry.blackDim);
+    var bright = isWhite ? "#000000" : "#ffffff";
+    var hover = mixHex(acc, bright, 0.82);
+
+    root.style.setProperty("--acc", acc);
+    root.style.setProperty("--acc-dim", accDim);
+    root.style.setProperty("--primary", acc);
+    root.style.setProperty("--primary-hover", hover);
+    root.style.setProperty("--success", acc);
+
+    /* Semantic tones stay fixed per theme (style.hackctl.com):
+       ok = green, info = blue, err = red, warn = yellow. */
+    var ok = accentByName("green"), info = accentByName("blue"),
+        err = accentByName("red"), warn = accentByName("yellow");
+    if (isWhite) {
+      root.style.setProperty("--ok", ok.light);
+      root.style.setProperty("--ok-d", ok.lightDim);
+      root.style.setProperty("--info", info.light);
+      root.style.setProperty("--info-d", info.lightDim);
+      root.style.setProperty("--err", err.light);
+      root.style.setProperty("--err-d", err.lightDim);
+      root.style.setProperty("--warn", warn.light);
+      root.style.setProperty("--warn-d", warn.lightDim);
+    } else if (theme === "grey") {
+      root.style.setProperty("--ok", ok.dark);
+      root.style.setProperty("--ok-d", ok.greyDim);
+      root.style.setProperty("--info", info.dark);
+      root.style.setProperty("--info-d", info.greyDim);
+      root.style.setProperty("--err", err.dark);
+      root.style.setProperty("--err-d", err.greyDim);
+      root.style.setProperty("--warn", warn.dark);
+      root.style.setProperty("--warn-d", warn.greyDim);
+    } else {
+      root.style.setProperty("--ok", ok.dark);
+      root.style.setProperty("--ok-d", ok.blackDim);
+      root.style.setProperty("--info", info.dark);
+      root.style.setProperty("--info-d", info.blackDim);
+      root.style.setProperty("--err", err.dark);
+      root.style.setProperty("--err-d", err.blackDim);
+      root.style.setProperty("--warn", warn.dark);
+      root.style.setProperty("--warn-d", warn.blackDim);
+    }
+
+    if (persist !== false) {
+      try {
+        localStorage.setItem("observec-theme", theme);
+        localStorage.setItem("observec-accent", accent);
+      } catch (e) {}
+    }
+    syncAppearanceUi(theme, accent);
+  }
+
+  function cycleTheme() {
+    var current = getAppearance();
+    var next = APPEARANCE_THEMES[(APPEARANCE_THEMES.indexOf(current.theme) + 1) % APPEARANCE_THEMES.length];
+    applyAppearance(next, current.accent);
+  }
+
+  function syncAppearanceUi(theme, accent) {
+    Array.prototype.forEach.call(document.querySelectorAll("[data-theme-option]"), function (btn) {
+      var active = btn.getAttribute("data-theme-option") === theme;
+      btn.classList.toggle("active", active);
+      if (active) btn.setAttribute("aria-pressed", "true");
+      else btn.removeAttribute("aria-pressed");
+    });
+    Array.prototype.forEach.call(document.querySelectorAll("[data-accent-option]"), function (btn) {
+      var active = btn.getAttribute("data-accent-option") === accent;
+      if (active) btn.setAttribute("aria-pressed", "true");
+      else btn.removeAttribute("aria-pressed");
+    });
+  }
+
+  function renderAccentOptions() {
+    var grid = $("accent-grid");
+    if (!grid || grid.dataset.built === "true") return;
+    grid.dataset.built = "true";
+    var current = getAppearance();
+    APPEARANCE_ACCENTS.forEach(function (entry) {
+      var btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "accent-swatch";
+      btn.setAttribute("data-accent-option", entry.name);
+      btn.title = entry.label;
+      btn.setAttribute("aria-label", entry.label + " accent");
+      var swatchTheme = current.theme || "black";
+      var bg = swatchTheme === "white" ? entry.light : entry.dark;
+      var dot = document.createElement("span");
+      dot.className = "dot-swatch";
+      dot.style.background = bg;
+      btn.appendChild(dot);
+      btn.addEventListener("click", function () {
+        applyAppearance(getAppearance().theme, entry.name);
+        renderAccentSwatchColors();
+      });
+      grid.appendChild(btn);
+    });
+  }
+
+  function renderAccentSwatchColors() {
+    var theme = getAppearance().theme;
+    Array.prototype.forEach.call(document.querySelectorAll("[data-accent-option]"), function (btn) {
+      var entry = accentByName(btn.getAttribute("data-accent-option"));
+      var dot = btn.querySelector(".dot-swatch");
+      if (dot) dot.style.background = theme === "white" ? entry.light : entry.dark;
+    });
+  }
+
+  function openSettings() {
+    renderAccentOptions();
+    renderAccentSwatchColors();
+    var current = getAppearance();
+    syncAppearanceUi(current.theme, current.accent);
+    if ($("dialog-overlay")) $("dialog-overlay").classList.remove("hidden");
+    if ($("settings-dialog")) $("settings-dialog").classList.remove("hidden");
+  }
+
+  (function initAppearance() {
+    renderAccentOptions();
+    var current = getAppearance();
+    try {
+      // One-time rollout of the black + orange defaults: browsers that
+      // saved the old green default get the new default once, then their
+      // own choices are respected on later loads.
+      if (!localStorage.getItem("observec-appearance-v")) {
+        current = { theme: "black", accent: "orange" };
+        localStorage.setItem("observec-appearance-v", "1");
+      }
+    } catch (e) {}
+    applyAppearance(current.theme, current.accent, false);
+    try {
+      localStorage.setItem("observec-theme", current.theme);
+      localStorage.setItem("observec-accent", current.accent);
+    } catch (e) {}
+  })();
+
+  if ($("nav-appearance-btn")) $("nav-appearance-btn").addEventListener("click", function () {
+    if (!groupOpen.appearance) setGroupOpen("appearance", true);
+    Array.prototype.forEach.call(document.querySelectorAll(".nav-subitem"), function (item) {
+      item.classList.toggle("active", item.id === "nav-appearance-btn");
+    });
+    openSettings();
+  });
+  if ($("settings-close")) $("settings-close").addEventListener("click", closeDialog);
+  Array.prototype.forEach.call(document.querySelectorAll("[data-theme-option]"), function (btn) {
+    btn.addEventListener("click", function () {
+      applyAppearance(btn.getAttribute("data-theme-option"), getAppearance().accent);
+      renderAccentSwatchColors();
+    });
   });
 
   var CONFIG_TARGETS = {
@@ -409,7 +687,9 @@
         label: "Delete",
         danger: true,
         onClick: function () {
-          if (window.confirm("Delete module \"" + name + "\"?")) deleteModules([name]);
+          uiConfirm("Delete module \"" + name + "\"?").then(function (ok) {
+            if (ok) deleteModules([name]);
+          });
         },
       },
     ]);
@@ -442,7 +722,8 @@
     var count = selectedNames().length;
     var deleteBtn = $("delete-selected-btn");
     deleteBtn.classList.toggle("hidden", count === 0);
-    deleteBtn.title = count ? "Delete selected (" + count + ")" : "Delete selected";
+    deleteBtn.setAttribute("data-action-tip", count ? "Delete selected (" + count + ")" : "Delete selected");
+    deleteBtn.removeAttribute("title");
 
     var selectAll = $("select-all");
     selectAll.checked = names.length > 0 && names.every(function (n) { return state.selected[n]; });
@@ -462,8 +743,9 @@
   $("delete-selected-btn").addEventListener("click", function () {
     var names = selectedNames();
     if (!names.length) return;
-    if (!window.confirm("Delete " + names.length + " module(s)?\n" + names.join(", "))) return;
-    deleteModules(names);
+    uiConfirm("Delete " + names.length + " module(s)?\n" + names.join(", ")).then(function (ok) {
+      if (ok) deleteModules(names);
+    });
   });
 
   var editingName = null;
@@ -503,7 +785,8 @@
 
   function closeDialog() {
     var routeDialogOpen = $("route-dialog") && !$("route-dialog").classList.contains("hidden");
-    ["module-dialog", "job-dialog", "file-dialog", "receiver-dialog", "route-dialog", "inhibit-dialog", "monitor-dialog", "user-dialog", "git-dialog"].forEach(function (id) {
+    var settingsWasOpen = $("settings-dialog") && !$("settings-dialog").classList.contains("hidden");
+    ["module-dialog", "job-dialog", "file-dialog", "receiver-dialog", "route-dialog", "inhibit-dialog", "monitor-dialog", "user-dialog", "git-dialog", "settings-dialog"].forEach(function (id) {
       var el = $(id);
       if (el) el.classList.add("hidden");
     });
@@ -524,6 +807,7 @@
       hideRouteError();
       renderRouteTree();
     }
+    if (settingsWasOpen) setActiveSub(lastSection[activeComponent]);
   }
 
   function setProberOptions(current) {
@@ -742,14 +1026,19 @@
 
   $("f-delete").addEventListener("click", function () {
     if (!editingName) return;
-    if (!window.confirm("Delete module \"" + editingName + "\"?")) return;
-    deleteModules([editingName], closeDialog);
+    uiConfirm("Delete module \"" + editingName + "\"?").then(function (ok) {
+      if (ok) deleteModules([editingName], closeDialog);
+    });
   });
 
   $("f-cancel").addEventListener("click", closeDialog);
   $("dialog-overlay").addEventListener("click", closeDialog);
   document.addEventListener("keydown", function (event) {
     if (event.key === "Escape") {
+      if ($("confirm-dialog") && !$("confirm-dialog").classList.contains("hidden")) {
+        settleConfirm(false);
+        return;
+      }
       closeRowMenu();
       closeDialog();
     }
@@ -852,21 +1141,83 @@
     }).join("\n");
   }
 
+  var CONFIG_FILENAMES = {
+    "config-yaml": "blackboxConfig.yml",
+    "prom-config-yaml": "prometheusConfig.yml",
+    "am-config-yaml": "alertmanagerConfig.yml",
+  };
+
   function renderConfigYaml(targetId, yaml) {
     var el = $(targetId);
     if (!el) return;
     el.dataset.rawYaml = yaml;
-    el.innerHTML = highlightYaml(yaml);
+    if (!el.dataset.editorBuilt) {
+      el.dataset.editorBuilt = "true";
+      el.innerHTML =
+        '<div class="editor-tab"><span class="editor-dot"></span>' +
+        '<span class="editor-tab-name"></span><span class="editor-lang">YAML</span></div>' +
+        '<div class="editor-body"></div>' +
+        '<div class="editor-status"><span class="editor-lines"></span><span>read-only</span></div>';
+      var tabName = el.querySelector(".editor-tab-name");
+      if (tabName) tabName.textContent = CONFIG_FILENAMES[targetId] || "config.yml";
+    }
+    var highlighted = highlightYaml(yaml).split("\n");
+    var body = el.querySelector(".editor-body");
+    if (body) {
+      body.innerHTML = highlighted.map(function (code, i) {
+        return '<div class="yaml-line"><span class="yaml-ln">' + (i + 1) +
+          '</span><span class="yaml-code">' + (code || "") + "</span></div>";
+      }).join("");
+    }
+    var linesEl = el.querySelector(".editor-lines");
+    if (linesEl) linesEl.textContent = highlighted.length + (highlighted.length === 1 ? " line" : " lines");
   }
 
   function loadConfigText(component) {
     var targetId = CONFIG_TARGETS[component];
     if (!targetId) return Promise.resolve();
+    refreshConfigCommitTag(component);
     return api("/" + component + "/config")
       .then(function (yaml) {
         renderConfigYaml(targetId, yaml);
       })
       .catch(function (err) { toast(err.message, true); });
+  }
+
+  var CONFIG_COMMIT_EL = {
+    blackbox: "blackbox-commit",
+    prometheus: "prom-commit",
+    alertmanager: "am-commit",
+  };
+  var CONFIG_COMMIT_MATCH = {
+    blackbox: /blackbox/i,
+    prometheus: /prometheus/i,
+    alertmanager: /alertmanager/i,
+  };
+
+  function refreshConfigCommitTag(component) {
+    var el = $(CONFIG_COMMIT_EL[component]);
+    if (!el) return Promise.resolve();
+    return api("/git/log")
+      .then(function (text) {
+        var data = JSON.parse(text);
+        var commits = (data && data.commits) || [];
+        var rx = CONFIG_COMMIT_MATCH[component];
+        var found = null;
+        for (var i = 0; i < commits.length; i++) {
+          if (rx.test(commits[i].message || "")) { found = commits[i]; break; }
+        }
+        if (!found && commits.length) found = commits[0];
+        if (found) {
+          var label = (found.shortHash || (found.hash || "").substring(0, 7)) + " · " + (found.message || "");
+          el.textContent = label;
+          el.setAttribute("data-action-tip", label);
+        } else {
+          el.textContent = "";
+          el.removeAttribute("data-action-tip");
+        }
+      })
+      .catch(function () {});
   }
 
   function copyConfigText(targetId) {
@@ -1071,8 +1422,10 @@
       tdLogs.className = "col-actions-cell";
       var logsBtn = document.createElement("button");
       logsBtn.type = "button";
-      logsBtn.className = "btn ghost sm";
-      logsBtn.textContent = "Logs";
+      logsBtn.className = "btn ghost sm icon-only";
+      logsBtn.setAttribute("data-action-tip", "View logs");
+      logsBtn.setAttribute("aria-label", "View logs");
+      logsBtn.innerHTML = '<svg class="icon" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>';
       logsBtn.addEventListener("click", function () { openProbeLog(probe.logId, probe.module, probe.target); });
       tdLogs.appendChild(logsBtn);
       row.appendChild(tdLogs);
@@ -1732,7 +2085,9 @@
           label: "Delete",
           danger: true,
           onClick: function () {
-            if (window.confirm("Delete job \"" + name + "\"?")) deleteJobs([name]);
+            uiConfirm("Delete job \"" + name + "\"?").then(function (ok) {
+              if (ok) deleteJobs([name]);
+            });
           },
         });
       }
@@ -1916,9 +2271,9 @@
       }));
       if (node.explicit) {
         dirActions.appendChild(ftAction(FT_DELETE_SVG, "Delete folder", true, function () {
-          if (window.confirm("Delete directory \"" + node.path + "/\"?")) {
-            deleteManagedDirectory(options.kind, node.path);
-          }
+          uiConfirm("Delete directory \"" + node.path + "/\"?").then(function (ok) {
+            if (ok) deleteManagedDirectory(options.kind, node.path);
+          });
         }));
       }
       row.appendChild(dirActions);
@@ -1973,9 +2328,9 @@
         options.onOpenFile(options.kind, path);
       }));
       fileActions.appendChild(ftAction(FT_DELETE_SVG, "Delete file", true, function () {
-        if (window.confirm("Delete " + managedFileLabel(options.kind) + " \"" + path + "\"?")) {
-          deleteManagedFiles(options.kind, [path]);
-        }
+        uiConfirm("Delete " + managedFileLabel(options.kind) + " \"" + path + "\"?").then(function (ok) {
+          if (ok) deleteManagedFiles(options.kind, [path]);
+        });
       }));
       row.appendChild(fileActions);
       row.addEventListener("click", function () { options.onOpenFile(options.kind, path); });
@@ -2632,8 +2987,9 @@
 
   $("f-job-delete").addEventListener("click", function () {
     if (!editingJobName) return;
-    if (!window.confirm("Delete job \"" + editingJobName + "\"?")) return;
-    deleteJobs([editingJobName], closeDialog);
+    uiConfirm("Delete job \"" + editingJobName + "\"?").then(function (ok) {
+      if (ok) deleteJobs([editingJobName], closeDialog);
+    });
   });
 
   $("f-job-cancel").addEventListener("click", closeDialog);
@@ -2714,7 +3070,7 @@
 
   function showInfoTip(anchor) {
     if (!anchor) return;
-    var text = anchor.getAttribute("data-tip");
+    var text = anchor.getAttribute("data-tip") || anchor.getAttribute("data-action-tip");
     if (!text) return;
     var el = getInfoTipEl();
     if (infoTipAnchor === anchor && el.classList.contains("visible")) {
@@ -2735,22 +3091,39 @@
     if (infoTipEl) infoTipEl.classList.remove("visible");
   }
 
+  function tipAnchorFrom(target) {
+    return target && target.closest ? target.closest(".info-tip, [data-action-tip]") : null;
+  }
+
   document.addEventListener("mouseover", function (e) {
-    var t = e.target && e.target.closest ? e.target.closest(".info-tip") : null;
+    var t = tipAnchorFrom(e.target);
     if (t) showInfoTip(t);
   });
   document.addEventListener("mouseout", function (e) {
     if (!infoTipAnchor) return;
-    var to = e.relatedTarget && e.relatedTarget.closest ? e.relatedTarget.closest(".info-tip") : null;
+    var to = tipAnchorFrom(e.relatedTarget);
     if (to !== infoTipAnchor) hideInfoTip();
   });
   document.addEventListener("focusin", function (e) {
-    var t = e.target && e.target.closest ? e.target.closest(".info-tip") : null;
+    var t = tipAnchorFrom(e.target);
     if (t) showInfoTip(t);
   });
   document.addEventListener("focusout", function (e) {
-    var t = e.target && e.target.closest ? e.target.closest(".info-tip") : null;
+    var t = tipAnchorFrom(e.target);
     if (t) hideInfoTip();
+  });
+  document.addEventListener("click", function () { hideInfoTip(); });
+  window.addEventListener("scroll", function () { hideInfoTip(); }, true);
+  window.addEventListener("resize", function () { hideInfoTip(); });
+
+  /* Panel-top toolbar buttons show their action in the themed bubble
+     instead of the native browser tooltip. */
+  Array.prototype.forEach.call(document.querySelectorAll(
+    ".section-header button[title], .monitors-header button[title], " +
+    ".section-header label[title], .monitors-header label[title]"
+  ), function (el) {
+    el.setAttribute("data-action-tip", el.getAttribute("title"));
+    el.removeAttribute("title");
   });
 
   document.addEventListener("click", function (e) {
@@ -3232,8 +3605,9 @@
 
   $("f-file-delete").addEventListener("click", function () {
     if (!fileEditor.name) return;
-    if (!window.confirm("Delete \"" + fileEditor.name + "\"?")) return;
-    deleteManagedFiles(fileEditor.kind, [fileEditor.name], closeDialog);
+    uiConfirm("Delete \"" + fileEditor.name + "\"?").then(function (ok) {
+      if (ok) deleteManagedFiles(fileEditor.kind, [fileEditor.name], closeDialog);
+    });
   });
 
   $("f-file-cancel").addEventListener("click", closeDialog);
@@ -3383,7 +3757,9 @@
           label: "Delete",
           danger: true,
           onClick: function () {
-            if (window.confirm("Delete receiver \"" + name + "\"?")) deleteReceivers([name]);
+            uiConfirm("Delete receiver \"" + name + "\"?").then(function (ok) {
+              if (ok) deleteReceivers([name]);
+            });
           },
         });
       }
@@ -3555,8 +3931,9 @@
 
   $("f-receiver-delete").addEventListener("click", function () {
     if (!editingReceiverName) return;
-    if (!window.confirm("Delete receiver \"" + editingReceiverName + "\"?")) return;
-    deleteReceivers([editingReceiverName], closeDialog);
+    uiConfirm("Delete receiver \"" + editingReceiverName + "\"?").then(function (ok) {
+      if (ok) deleteReceivers([editingReceiverName], closeDialog);
+    });
   });
 
   function encodeRoutePath(pathParts) {
@@ -3978,14 +4355,16 @@
 
   function deleteSelectedRoute() {
     if (!state.selectedRoutePath) return;
-    if (!window.confirm("Delete this route and all of its child routes?")) return;
-    var parent = getRouteParent(state.routeConfig, state.selectedRoutePath);
-    var index = parseRoutePath(state.selectedRoutePath).pop();
-    if (!parent || !parent.routes) return;
-    parent.routes.splice(index, 1);
-    state.selectedRoutePath = null;
-    closeDialog();
-    renderRouteTree();
+    uiConfirm("Delete this route and all of its child routes?").then(function (ok) {
+      if (!ok) return;
+      var parent = getRouteParent(state.routeConfig, state.selectedRoutePath);
+      var index = parseRoutePath(state.selectedRoutePath).pop();
+      if (!parent || !parent.routes) return;
+      parent.routes.splice(index, 1);
+      state.selectedRoutePath = null;
+      closeDialog();
+      renderRouteTree();
+    });
   }
 
   function loadRoutes() {
@@ -4008,7 +4387,6 @@
     hideRouteError();
     var saveBtn = $("routes-save-btn");
     saveBtn.disabled = true;
-    saveBtn.textContent = "Saving...";
 
     api("/alertmanager/routes", {
       method: "PUT",
@@ -4021,7 +4399,6 @@
       .catch(function (err) { showRouteError(err.message); })
       .finally(function () {
         saveBtn.disabled = false;
-        saveBtn.textContent = "Save routes";
       });
   }
 
@@ -4134,8 +4511,9 @@
           label: "Delete",
           danger: true,
           onClick: function () {
-            if (!window.confirm("Delete this inhibit rule?")) return;
-            deleteInhibitRule(index);
+            uiConfirm("Delete this inhibit rule?").then(function (ok) {
+              if (ok) deleteInhibitRule(index);
+            });
           },
         },
       ]));
@@ -4266,10 +4644,12 @@
 
   $("inhibit-delete-btn").addEventListener("click", function () {
     if (editingInhibitRuleIndex === null) return;
-    if (!window.confirm("Delete this inhibit rule?")) return;
-    var rules = state.inhibitRules.slice();
-    rules.splice(editingInhibitRuleIndex, 1);
-    persistInhibitRules(rules, closeDialog);
+    uiConfirm("Delete this inhibit rule?").then(function (ok) {
+      if (!ok) return;
+      var rules = state.inhibitRules.slice();
+      rules.splice(editingInhibitRuleIndex, 1);
+      persistInhibitRules(rules, closeDialog);
+    });
   });
 
   function loadAlertmanagerNotifications() {
@@ -4362,7 +4742,7 @@
       dot.classList.add("warn");
       dot.title = summary.pending + " pending";
     } else if (summary.paused === summary.total) {
-      dot.style.background = "#6b7280";
+      dot.style.background = "var(--muted-foreground)";
       dot.classList.add("warn");
       dot.title = "All paused";
     } else {
@@ -4542,7 +4922,7 @@
     nameWrap.style.gap = "8px";
     var dot = document.createElement("span");
     dot.className = "dot " + statusDotClass(entry.status);
-    if (entry.status === "paused") { dot.style.background = "#6b7280"; dot.className = "dot"; }
+    if (entry.status === "paused") { dot.style.background = "var(--muted-foreground)"; dot.className = "dot"; }
     dot.title = entry.status;
     nameWrap.appendChild(dot);
     var nameSpan = document.createElement("span");
@@ -4593,7 +4973,7 @@
       var failAgo = formatTimeAgo(entry.lastFail);
       tdFail.textContent = failAgo;
       tdFail.title = new Date(entry.lastFail * 1000).toLocaleString();
-      if (entry.status === "down") tdFail.style.color = "#ef4444";
+      if (entry.status === "down") tdFail.style.color = "var(--err)";
       else tdFail.className = "text-muted";
     } else {
       tdFail.textContent = "-";
@@ -4630,8 +5010,8 @@
     var sslText = formatSslCell(entry);
     tdSsl.textContent = sslText;
     if (sslText === "-" || sslText === "expired") tdSsl.className += " text-muted";
-    else if (entry.sslExpiresInDays != null && entry.sslExpiresInDays < 7) tdSsl.style.color = "#ef4444";
-    else if (entry.sslExpiresInDays != null && entry.sslExpiresInDays < 30) tdSsl.style.color = "#eab308";
+    else if (entry.sslExpiresInDays != null && entry.sslExpiresInDays < 7) tdSsl.style.color = "var(--err)";
+    else if (entry.sslExpiresInDays != null && entry.sslExpiresInDays < 30) tdSsl.style.color = "var(--warn)";
     tr.appendChild(tdSsl);
 
     var tdActions = document.createElement("td");
@@ -4711,11 +5091,11 @@
     statusRow.className = "monitor-status";
     var dot = document.createElement("span");
     dot.className = "dot " + statusDotClass(status);
-    if (status === "paused") { dot.style.background = "#6b7280"; dot.className = "dot"; }
+    if (status === "paused") { dot.style.background = "var(--muted-foreground)"; dot.className = "dot"; }
     statusRow.appendChild(dot);
     var label = document.createElement("span");
     label.textContent = status === "up" ? "Up" : status === "down" ? "Down" : status === "paused" ? "Paused" : "Pending";
-    label.style.color = status === "down" ? "#ef4444" : status === "up" ? "#22c55e" : "var(--muted-foreground)";
+    label.style.color = status === "down" ? "var(--err)" : status === "up" ? "var(--ok)" : "var(--muted-foreground)";
     statusRow.appendChild(label);
     if (status !== "paused" && status !== "pending") {
       var uptime = computeUptime(beats);
@@ -4815,7 +5195,7 @@
     var items = [
       { label: "Edit", onClick: function () { openMonitorDialog(id); } },
       { label: status === "paused" ? "Resume" : "Pause", onClick: function () { if (status === "paused") resumeMonitor(id); else pauseMonitor(id); } },
-      { label: "Delete", danger: true, onClick: function () { if (window.confirm('Delete monitor "' + id + '"? This removes its job, module and alert rule.')) deleteMonitor(id); } },
+      { label: "Delete", danger: true, onClick: function () { uiConfirm('Delete monitor "' + id + '"? This removes its job, module and alert rule.').then(function (ok) { if (ok) deleteMonitor(id); }); } },
     ];
     openRowMenuAt(anchor, items);
   }
@@ -5081,9 +5461,11 @@
   $("f-monitor-cancel").addEventListener("click", closeDialog);
   $("f-monitor-delete").addEventListener("click", function () {
     if (!state.editingMonitorId) return;
-    if (!window.confirm('Delete monitor "' + state.editingMonitorId + '"?')) return;
-    deleteMonitor(state.editingMonitorId);
-    closeDialog();
+    uiConfirm('Delete monitor "' + state.editingMonitorId + '"?').then(function (ok) {
+      if (!ok) return;
+      deleteMonitor(state.editingMonitorId);
+      closeDialog();
+    });
   });
   $("monitor-form").addEventListener("submit", function (event) {
     event.preventDefault();
@@ -5242,7 +5624,15 @@
 
   $("am-notifications-refresh").addEventListener("click", loadAlertmanagerNotifications);
 
-  var groupOpen = { monitors: true, blackbox: true, prometheus: true, alertmanager: true, access: true, changelog: true };
+  var groupOpen = { monitors: true, blackbox: true, prometheus: true, alertmanager: true, access: true, changelog: true, appearance: true };
+  try {
+    var savedOpen = JSON.parse(localStorage.getItem("observec-nav-open") || "null");
+    if (savedOpen && typeof savedOpen === "object") {
+      Object.keys(groupOpen).forEach(function (name) {
+        if (typeof savedOpen[name] === "boolean") groupOpen[name] = savedOpen[name];
+      });
+    }
+  } catch (e) {}
 
   function setGroupOpen(name, open) {
     groupOpen[name] = !!open;
@@ -5251,6 +5641,7 @@
     group.setAttribute("data-open", open ? "true" : "false");
     var btn = group.querySelector(".nav-item[data-component]");
     if (btn) btn.setAttribute("aria-expanded", open ? "true" : "false");
+    try { localStorage.setItem("observec-nav-open", JSON.stringify(groupOpen)); } catch (e) {}
   }
 
   Array.prototype.forEach.call(document.querySelectorAll(".nav-subitem[data-section]"), function (btn) {
@@ -5267,15 +5658,545 @@
     });
   });
 
+  // Super items are pure collapse toggles: clicking one only expands /
+  // collapses its child tree (and its vertical guide line). Navigation
+  // happens via the sub-items, which auto-expand their group.
+  // When the sidebar itself is collapsed to icons, the sub tree is hidden
+  // so a parent click navigates to the component home instead.
+  function isSidebarCollapsed() {
+    return document.body.classList.contains("sidebar-collapsed");
+  }
+
+  function updateSidebarTriggerIcon() {
+    var icon = $("sidebar-trigger-icon");
+    if (!icon) return;
+    var collapsed = isSidebarCollapsed();
+    icon.innerHTML = collapsed
+      ? '<path d="m6 17 5-5-5-5"/><path d="m13 17 5-5-5-5"/>'
+      : '<path d="m11 17-5-5 5-5"/><path d="m18 17-5-5 5-5"/>';
+  }
+
+  function setSidebarCollapsed(collapsed) {
+    document.body.classList.toggle("sidebar-collapsed", !!collapsed);
+    try { localStorage.setItem("observec-sidebar-collapsed", collapsed ? "true" : "false"); } catch (e) {}
+    updateSidebarTriggerIcon();
+  }
+
+  function toggleSidebar() {
+    setSidebarCollapsed(!isSidebarCollapsed());
+  }
+
   Array.prototype.forEach.call(document.querySelectorAll(".nav-item[data-component]"), function (btn) {
     btn.addEventListener("click", function () {
       var name = btn.getAttribute("data-component");
-      setGroupOpen(name, true);
-      switchComponent(name, HOME_SECTION[name] || lastSection[name]);
+      if (isSidebarCollapsed()) {
+        switchComponent(name, HOME_SECTION[name] || lastSection[name]);
+        return;
+      }
+      setGroupOpen(name, !groupOpen[name]);
     });
   });
 
-  Object.keys(groupOpen).forEach(function (name) { setGroupOpen(name, true); });
+  if ($("sidebar-trigger")) $("sidebar-trigger").addEventListener("click", toggleSidebar);
+  if ($("sidebar-rail")) $("sidebar-rail").addEventListener("click", toggleSidebar);
+  document.addEventListener("keydown", function (event) {
+    if ((event.ctrlKey || event.metaKey) && !event.shiftKey && !event.altKey &&
+        (event.key === "b" || event.key === "B")) {
+      var tag = (event.target && event.target.tagName) || "";
+      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" ||
+          (event.target && event.target.isContentEditable)) return;
+      event.preventDefault();
+      toggleSidebar();
+    }
+  });
+  try {
+    if (localStorage.getItem("observec-sidebar-collapsed") === "true") {
+      document.body.classList.add("sidebar-collapsed");
+    }
+  } catch (e) {}
+  updateSidebarTriggerIcon();
+
+  /* Custom selects — style.hackctl.com .sel spec. Every native <select>
+     stays in the DOM as the data source (all existing .value reads,
+     .disabled writes, option rebuilds and change handlers work untouched)
+     but is never shown, so no browser dropdown chrome is used. */
+  var selState = { current: null };
+  var selList = null;
+
+  function selOptions(native) {
+    var out = [];
+    Array.prototype.forEach.call(native.options, function (opt) {
+      out.push({ value: opt.value, text: opt.textContent, disabled: !!opt.disabled });
+    });
+    return out;
+  }
+
+  function selSelectedIndex(native) {
+    if (native.selectedIndex >= 0 && native.options[native.selectedIndex]) return native.selectedIndex;
+    return native.options.length ? 0 : -1;
+  }
+
+  function selMirrorClasses(native, wrap) {
+    var skip = { select: 1, input: 1, mono: 1, "select-enhanced": 1 };
+    var classes = ["sel"];
+    Array.prototype.forEach.call(native.classList, function (c) {
+      if (!skip[c]) classes.push(c);
+    });
+    wrap.className = classes.join(" ");
+  }
+
+  function selRefresh(native) {
+    var wrap = native._selWrap, btn = native._selBtn, label = native._selLabel;
+    if (!wrap || !btn) return;
+    selMirrorClasses(native, wrap);
+    btn.disabled = !!native.disabled;
+    var idx = selSelectedIndex(native);
+    var opts = native.options;
+    if (label) {
+      if (idx >= 0 && opts[idx]) {
+        label.textContent = opts[idx].textContent;
+        label.classList.remove("ph");
+      } else {
+        label.textContent = "";
+        label.classList.add("ph");
+      }
+    }
+    btn.setAttribute("aria-expanded", selState.current && selState.current.native === native ? "true" : "false");
+  }
+
+  function selClose() {
+    if (selList && selList.parentNode) selList.parentNode.removeChild(selList);
+    selList = null;
+    if (selState.current) {
+      selState.current.btn.setAttribute("data-open", "false");
+      selState.current.btn.setAttribute("aria-expanded", "false");
+      selState.current = null;
+    }
+  }
+
+  function selPosition(btn) {
+    var rect = btn.getBoundingClientRect();
+    var listH = Math.min(selList.scrollHeight, 220);
+    var top = rect.bottom + 4;
+    if (top + listH > window.innerHeight - 8) {
+      top = Math.max(8, rect.top - listH - 4);
+    }
+    selList.style.minWidth = rect.width + "px";
+    selList.style.maxWidth = Math.max(rect.width, 200) + "px";
+    selList.style.left = Math.min(rect.left, window.innerWidth - Math.max(rect.width, 200) - 8) + "px";
+    selList.style.top = top + "px";
+  }
+
+  function selRenderList(entry) {
+    selList.innerHTML = "";
+    entry.options.forEach(function (opt, i) {
+      var item = document.createElement("button");
+      item.type = "button";
+      item.className = "sel-opt";
+      item.setAttribute("role", "option");
+      item.setAttribute("aria-selected", i === entry.selected ? "true" : "false");
+      item.setAttribute("data-active", i === entry.active ? "true" : "false");
+      if (opt.disabled) item.setAttribute("data-disabled", "true");
+      var text = document.createElement("span");
+      text.textContent = opt.text;
+      item.appendChild(text);
+      if (i === entry.selected) {
+        var tick = document.createElement("span");
+        tick.className = "tick";
+        tick.textContent = "✓";
+        item.appendChild(tick);
+      }
+      if (!opt.disabled) {
+        item.addEventListener("click", function (event) {
+          event.stopPropagation();
+          selPick(entry, i);
+        });
+        item.addEventListener("mousemove", function () {
+          if (entry.active !== i) {
+            entry.active = i;
+            selRenderList(entry);
+          }
+        });
+      }
+      selList.appendChild(item);
+    });
+  }
+
+  function selPick(entry, i) {
+    var opt = entry.options[i];
+    if (!opt || opt.disabled) return;
+    entry.native.value = opt.value;
+    selClose();
+    entry.btn.focus();
+    var event;
+    try {
+      event = new Event("change", { bubbles: true });
+    } catch (e) {
+      event = document.createEvent("HTMLEvents");
+      event.initEvent("change", true, false);
+    }
+    entry.native.dispatchEvent(event);
+    selRefresh(entry.native);
+  }
+
+  function selOpen(native, btn) {
+    if (btn.disabled) return;
+    if (selState.current && selState.current.native === native) {
+      selClose();
+      return;
+    }
+    selClose();
+    var options = selOptions(native);
+    if (!options.length) return;
+    var selected = selSelectedIndex(native);
+    var entry = { native: native, btn: btn, options: options, selected: selected, active: selected };
+    selList = document.createElement("div");
+    selList.className = "sel-list";
+    selList.setAttribute("role", "listbox");
+    document.body.appendChild(selList);
+    selRenderList(entry);
+    selPosition(btn);
+    btn.setAttribute("data-open", "true");
+    btn.setAttribute("aria-expanded", "true");
+    selState.current = entry;
+    var activeEl = selList.querySelector('[data-active="true"]');
+    if (activeEl && activeEl.scrollIntoView) {
+      try { activeEl.scrollIntoView({ block: "nearest" }); } catch (e) {}
+    }
+  }
+
+  function selMove(dir) {
+    var entry = selState.current;
+    if (!entry) return;
+    var i = entry.active, n = entry.options.length, guard = 0;
+    do {
+      i = (i + dir + n) % n;
+      guard++;
+    } while (entry.options[i].disabled && guard <= n);
+    if (entry.options[i].disabled) return;
+    entry.active = i;
+    selRenderList(entry);
+    var activeEl = selList.querySelectorAll(".sel-opt")[i];
+    if (activeEl && activeEl.scrollIntoView) {
+      try { activeEl.scrollIntoView({ block: "nearest" }); } catch (e) {}
+    }
+  }
+
+  function enhanceSelect(native) {
+    if (!native || native.tagName !== "SELECT" || native._selWrap) return;
+    var wrap = document.createElement("span");
+    wrap.className = "sel";
+    native.parentNode.insertBefore(wrap, native);
+    wrap.appendChild(native);
+    var measuredH = native.offsetHeight || 34;
+    wrap.style.height = measuredH + "px";
+    if (native.style.width) wrap.style.width = native.style.width;
+    native.classList.add("select-enhanced");
+    selMirrorClasses(native, wrap);
+
+    var btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "sel-btn";
+    btn.setAttribute("data-open", "false");
+    btn.setAttribute("aria-haspopup", "listbox");
+    btn.setAttribute("aria-expanded", "false");
+    if (native.style.fontSize) btn.style.fontSize = native.style.fontSize;
+    var label = document.createElement("span");
+    label.className = "sel-value";
+    btn.appendChild(label);
+    var chev = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    chev.setAttribute("class", "icon sel-chev");
+    chev.setAttribute("viewBox", "0 0 24 24");
+    var chevPath = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    chevPath.setAttribute("d", "m6 9 6 6 6-6");
+    chev.appendChild(chevPath);
+    btn.appendChild(chev);
+    wrap.appendChild(btn);
+
+    native._selWrap = wrap;
+    native._selBtn = btn;
+    native._selLabel = label;
+
+    btn.addEventListener("click", function (event) {
+      event.stopPropagation();
+      selRefresh(native);
+      selOpen(native, btn);
+    });
+    btn.addEventListener("keydown", function (event) {
+      var openHere = selState.current && selState.current.native === native;
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        if (openHere) selPick(selState.current, selState.current.active);
+        else { selRefresh(native); selOpen(native, btn); }
+      } else if (event.key === "ArrowDown") {
+        event.preventDefault();
+        if (openHere) selMove(1);
+        else { selRefresh(native); selOpen(native, btn); }
+      } else if (event.key === "ArrowUp") {
+        event.preventDefault();
+        if (openHere) selMove(-1);
+        else { selRefresh(native); selOpen(native, btn); }
+      } else if (event.key === "Escape" && openHere) {
+        event.preventDefault();
+        selClose();
+      }
+    });
+    native.addEventListener("change", function () { selRefresh(native); });
+
+    if (window.MutationObserver) {
+      new MutationObserver(function (mutations) {
+        var reopen = false;
+        mutations.forEach(function (m) {
+          if (m.type === "childList") reopen = true;
+        });
+        selRefresh(native);
+        if (reopen && selState.current && selState.current.native === native) {
+          var entry = selState.current;
+          entry.options = selOptions(native);
+          entry.selected = selSelectedIndex(native);
+          entry.active = entry.selected;
+          selRenderList(entry);
+          selPosition(btn);
+        }
+      }).observe(native, { childList: true, attributes: true, attributeFilter: ["class", "disabled"] });
+    }
+    selRefresh(native);
+  }
+
+  function insideFloat(t) {
+    while (t && t !== document) {
+      if (t.classList && (t.classList.contains("sel-list") || t.classList.contains("sel-btn"))) return true;
+      if (t.tagName === "INPUT" && t.hasAttribute && t.hasAttribute("data-sug")) return true;
+      t = t.parentNode;
+    }
+    return false;
+  }
+
+  document.addEventListener("click", function (event) {
+    if (!selState.current && !sugState.list) return;
+    if (!insideFloat(event.target)) {
+      selClose();
+      sugClose();
+    }
+  });
+  document.addEventListener("keydown", function (event) {
+    if (event.key === "Escape" && selState.current) {
+      var entry = selState.current;
+      selClose();
+      if (entry.btn) entry.btn.focus();
+    }
+  });
+  window.addEventListener("resize", function () { selClose(); sugClose(); });
+  window.addEventListener("scroll", function (event) {
+    if (event.target && event.target.closest && event.target.closest(".sel-list")) return;
+    selClose();
+    sugClose();
+  }, true);
+
+  Array.prototype.forEach.call(document.querySelectorAll("select.select"), function (native) { enhanceSelect(native); });
+  if (window.MutationObserver) {
+    new MutationObserver(function (mutations) {
+      mutations.forEach(function (m) {
+        var el = m.target;
+        if (el.classList && el.classList.contains("dialog") && !el.classList.contains("hidden")) {
+          Array.prototype.forEach.call(el.querySelectorAll("select.select"), function (native) { selRefresh(native); });
+        }
+      });
+    }).observe(document.body, { subtree: true, attributes: true, attributeFilter: ["class"] });
+  }
+
+  /* Custom input suggestions — replaces native <datalist> popups (unstylable
+     browser UI) with the same list UI as the custom selects. The <datalist>
+     elements stay as live data sources; the `list` attribute is detached so
+     the browser never shows its own popup. */
+  var sugState = { input: null, list: null, items: [], active: -1 };
+
+  function sugClose() {
+    var input = sugState.input;
+    if (sugState.list && sugState.list.parentNode) sugState.list.parentNode.removeChild(sugState.list);
+    sugState.input = null;
+    sugState.list = null;
+    sugState.items = [];
+    sugState.active = -1;
+    if (input) input.setAttribute("aria-expanded", "false");
+  }
+
+  function sugSource(input) {
+    var id = input.getAttribute("data-sug");
+    var dl = id && document.getElementById(id);
+    var out = [];
+    if (dl) {
+      Array.prototype.forEach.call(dl.querySelectorAll("option"), function (opt) {
+        var v = opt.value || opt.textContent;
+        if (v) out.push(v);
+      });
+    }
+    return out;
+  }
+
+  function sugFilter(input) {
+    var needle = (input.value || "").toLowerCase();
+    return sugSource(input).filter(function (v) {
+      return !needle || v.toLowerCase().indexOf(needle) !== -1;
+    });
+  }
+
+  function sugPosition() {
+    if (!sugState.list || !sugState.input) return;
+    var rect = sugState.input.getBoundingClientRect();
+    var listH = Math.min(sugState.list.scrollHeight, 220);
+    var top = rect.bottom + 4;
+    if (top + listH > window.innerHeight - 8) {
+      top = Math.max(8, rect.top - listH - 4);
+    }
+    sugState.list.style.minWidth = rect.width + "px";
+    sugState.list.style.maxWidth = Math.max(rect.width, 200) + "px";
+    sugState.list.style.left = Math.min(rect.left, window.innerWidth - Math.max(rect.width, 200) - 8) + "px";
+    sugState.list.style.top = top + "px";
+  }
+
+  function sugRender() {
+    if (!sugState.list) return;
+    sugState.list.innerHTML = "";
+    if (!sugState.items.length) {
+      var empty = document.createElement("div");
+      empty.className = "sel-empty";
+      empty.textContent = "No matches";
+      sugState.list.appendChild(empty);
+      return;
+    }
+    sugState.items.forEach(function (text, i) {
+      var item = document.createElement("button");
+      item.type = "button";
+      item.className = "sel-opt";
+      item.setAttribute("role", "option");
+      item.setAttribute("aria-selected", "false");
+      item.setAttribute("data-active", i === sugState.active ? "true" : "false");
+      item.textContent = text;
+      item.addEventListener("click", function (event) {
+        event.stopPropagation();
+        sugPick(i);
+      });
+      item.addEventListener("mousemove", function () {
+        if (sugState.active !== i) {
+          sugState.active = i;
+          sugRender();
+        }
+      });
+      sugState.list.appendChild(item);
+    });
+    var activeEl = sugState.list.querySelector('[data-active="true"]');
+    if (activeEl && activeEl.scrollIntoView) {
+      try { activeEl.scrollIntoView({ block: "nearest" }); } catch (e) {}
+    }
+  }
+
+  function sugPick(i) {
+    var input = sugState.input;
+    var text = sugState.items[i];
+    if (!input || text == null) return;
+    sugClose();
+    input.focus();
+    sugState.justPicked = true;
+    input.value = text;
+    var event;
+    try {
+      event = new Event("input", { bubbles: true });
+    } catch (e) {
+      event = document.createEvent("HTMLEvents");
+      event.initEvent("input", true, false);
+    }
+    input.dispatchEvent(event);
+    try {
+      event = new Event("change", { bubbles: true });
+    } catch (e) {
+      event = document.createEvent("HTMLEvents");
+      event.initEvent("change", true, false);
+    }
+    input.dispatchEvent(event);
+  }
+
+  function sugOpen(input) {
+    var items = sugFilter(input);
+    if (!items.length && !sugSource(input).length) {
+      if (sugState.input === input) sugClose();
+      return;
+    }
+    if (sugState.list && sugState.input === input) {
+      sugState.items = items;
+      if (sugState.active >= items.length) sugState.active = items.length - 1;
+      sugRender();
+      sugPosition();
+      return;
+    }
+    sugClose();
+    sugState.input = input;
+    sugState.items = items;
+    sugState.active = -1;
+    sugState.list = document.createElement("div");
+    sugState.list.className = "sel-list";
+    sugState.list.setAttribute("role", "listbox");
+    document.body.appendChild(sugState.list);
+    input.setAttribute("aria-expanded", "true");
+    sugRender();
+    sugPosition();
+  }
+
+  function sugMove(dir) {
+    if (!sugState.list || !sugState.items.length) return;
+    var n = sugState.items.length;
+    sugState.active = (((sugState.active + dir) % n) + n) % n;
+    sugRender();
+    var rows = sugState.list.querySelectorAll(".sel-opt");
+    var activeEl = rows[sugState.active];
+    if (activeEl && activeEl.scrollIntoView) {
+      try { activeEl.scrollIntoView({ block: "nearest" }); } catch (e) {}
+    }
+  }
+
+  Array.prototype.forEach.call(document.querySelectorAll("input[list]"), function (input) {
+    input.setAttribute("data-sug", input.getAttribute("list"));
+    input.removeAttribute("list");
+    input.setAttribute("autocomplete", "off");
+    input.setAttribute("role", "combobox");
+    input.setAttribute("aria-expanded", "false");
+    input.setAttribute("aria-autocomplete", "list");
+    input.addEventListener("focus", function () { sugOpen(input); });
+    input.addEventListener("input", function () {
+      if (sugState.justPicked) { sugState.justPicked = false; return; }
+      if (!sugState.list || sugState.input !== input) sugOpen(input);
+      else {
+        sugState.items = sugFilter(input);
+        sugState.active = -1;
+        sugRender();
+        sugPosition();
+      }
+    });
+    input.addEventListener("keydown", function (event) {
+      var openHere = sugState.list && sugState.input === input;
+      if (event.key === "ArrowDown") {
+        event.preventDefault();
+        if (openHere) sugMove(1);
+        else sugOpen(input);
+      } else if (event.key === "ArrowUp") {
+        event.preventDefault();
+        if (openHere) sugMove(-1);
+      } else if (event.key === "Enter") {
+        if (openHere && sugState.active >= 0) {
+          event.preventDefault();
+          sugPick(sugState.active);
+        }
+      } else if (event.key === "Escape" && openHere) {
+        event.preventDefault();
+        sugClose();
+      }
+    });
+    input.addEventListener("blur", function () {
+      input.setAttribute("aria-expanded", "false");
+    });
+  });
+
+  Object.keys(groupOpen).forEach(function (name) { setGroupOpen(name, groupOpen[name]); });
 
   var resizeTimer = null;
   window.addEventListener("resize", function () {
@@ -5443,18 +6364,6 @@
         });
     });
   }
-  var ddSwitch = $("dropdown-switch");
-  if (ddSwitch) {
-    ddSwitch.addEventListener("click", function () {
-      var dd = $("user-dropdown");
-      if (dd) dd.classList.add("hidden");
-      api("/api/auth/logout", { method: "POST" }).finally(function () {
-        state.currentUser = null;
-        updateAuthUI();
-        showLogin();
-      });
-    });
-  }
 
   var _origApi = api;
 
@@ -5545,11 +6454,13 @@
         label: "Delete",
         danger: true,
         onClick: function () {
-          if (window.confirm('Delete user "' + user.username + '"?')) {
-            api("/api/users/" + user.id, { method: "DELETE" })
-              .then(function (msg) { toast(extractMessage(msg)); return loadUsers(); })
-              .catch(function (err) { toast(err.message, true); });
-          }
+          uiConfirm('Delete user "' + user.username + '"?').then(function (ok) {
+            if (ok) {
+              api("/api/users/" + user.id, { method: "DELETE" })
+                .then(function (msg) { toast(extractMessage(msg)); return loadUsers(); })
+                .catch(function (err) { toast(err.message, true); });
+            }
+          });
         }
       });
     }
@@ -5582,10 +6493,12 @@
   var userDelete = $("f-user-delete");
   if (userDelete) userDelete.addEventListener("click", function () {
     if (!editingUserId) return;
-    if (!window.confirm("Delete this user?")) return;
-    api("/api/users/" + editingUserId, { method: "DELETE" })
-      .then(function (msg) { toast(extractMessage(msg)); closeDialog(); return loadUsers(); })
-      .catch(function (err) { var el = $("user-error"); el.textContent = err.message; el.classList.remove("hidden"); });
+    uiConfirm("Delete this user?").then(function (ok) {
+      if (!ok) return;
+      api("/api/users/" + editingUserId, { method: "DELETE" })
+        .then(function (msg) { toast(extractMessage(msg)); closeDialog(); return loadUsers(); })
+        .catch(function (err) { var el = $("user-error"); el.textContent = err.message; el.classList.remove("hidden"); });
+    });
   });
   var userForm = $("user-form");
   if (userForm) {
@@ -5705,9 +6618,10 @@
         applyBtn.textContent = "Apply";
         applyBtn.title = "Apply this commit to top (cherry-pick)";
         applyBtn.addEventListener("click", function () {
-          if (!confirm("Apply commit " + c.shortHash + " to top? This will create a new commit with same content on HEAD.")) return;
-          applyBtn.disabled = true;
-          applyBtn.textContent = "Applying...";
+          uiConfirm("Apply commit " + (c.shortHash || c.hash.substring(0, 7)) + " to top?\n\n" + (c.message || ""), { title: "Apply commit", okLabel: "Apply", danger: false }).then(function (ok) {
+            if (!ok) return;
+            applyBtn.disabled = true;
+            applyBtn.textContent = "Applying...";
           api("/git/apply", { method: "POST", body: JSON.stringify({ hash: c.hash }) })
             .then(function (text) {
               var data = JSON.parse(text);
@@ -5717,6 +6631,7 @@
             })
             .catch(function (err) { toast(err.message, true); })
             .finally(function () { applyBtn.disabled = false; applyBtn.textContent = "Apply"; });
+          });
         });
         tdAct.appendChild(applyBtn);
         tr.appendChild(tdAct);

@@ -5,7 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>observec · probe log</title>
   <link rel="icon" type="image/png" href="/observec.png?v=20260906w" />
-  <link rel="stylesheet" href="/styles.css?v=20260822u" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&display=swap" />
+  <link rel="stylesheet" href="/styles.css?v=20261013e" />
   <style>
     body { background: var(--background); }
     .pl-header {
@@ -19,6 +22,7 @@
     .pl-title {
       margin-right: auto;
       font-size: 12.5px;
+      font-family: var(--mono);
       color: var(--muted-foreground);
       overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
     }
@@ -27,21 +31,44 @@
     .icon-btn:disabled { opacity: .45; cursor: default; }
     .log-count { min-width: 48px; text-align: right; font-size: 12px; }
     .pl-body { max-width: 1100px; margin: 0 auto; padding: 18px 20px 40px; }
-    .pl-lines { font-size: 12px; line-height: 1.75; color: var(--log-text, #b4b4b4); }
+    .pl-lines { font-size: 12px; line-height: 1.75; font-family: var(--mono); color: var(--log-text, var(--muted-foreground)); }
     .pl-line { padding: 1px 0; white-space: pre-wrap; word-break: break-all; }
-    .pl-line:hover { background: var(--card); }
-    .hl { background: var(--mark-bg, #2c2c2c); color: inherit; border-radius: 2px; }
-    .hl.current { background: var(--primary); color: var(--primary-foreground); }
-    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    .pl-line:hover { background: var(--elevated); }
+    .hl { background: var(--mark-bg, var(--acc-dim)); color: var(--acc); border-radius: 2px; }
+    .hl.current { background: var(--acc); color: var(--primary-foreground); }
+    ::-webkit-scrollbar { width: 4px; height: 4px; }
     ::-webkit-scrollbar-track { background: transparent; }
     ::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: 4px; }
-    html.light { --log-text: #444444; --mark-bg: #e4e4e4; }
+    html.light { --log-text: var(--muted-foreground); --mark-bg: var(--acc-dim); }
   </style>
   <script>
     try {
-      if (localStorage.getItem("observec-theme") === "light") {
-        document.documentElement.classList.add("light");
-      }
+      var plTheme = localStorage.getItem("observec-theme") || "black";
+      if (plTheme === "light") plTheme = "white";
+      if (plTheme === "dark") plTheme = "black";
+      if (plTheme !== "grey" && plTheme !== "black" && plTheme !== "white") plTheme = "black";
+      document.documentElement.dataset.theme = plTheme;
+      document.documentElement.classList.toggle("light", plTheme === "white");
+      var plAccents = {
+        green: { dark: "#5ee08a", greyDim: "#1f3125", blackDim: "#0d1f13", light: "#0f7a3a", lightDim: "#e7f0eb" },
+        blue: { dark: "#5b9dff", greyDim: "#1f2836", blackDim: "#0d1624", light: "#2260cf", lightDim: "#e9eef7" },
+        red: { dark: "#ff5555", greyDim: "#361e1e", blackDim: "#240c0c", light: "#c92a2a", lightDim: "#f6e9e9" },
+        yellow: { dark: "#f2c94c", greyDim: "#342e1d", blackDim: "#221c0b", light: "#7f5f00", lightDim: "#f0eee6" },
+        orange: { dark: "#ff9640", greyDim: "#36271b", blackDim: "#241509", light: "#a84c00", lightDim: "#f3ece6" },
+        purple: { dark: "#b48cff", greyDim: "#2b2636", blackDim: "#191424", light: "#6a42d0", lightDim: "#eeebf7" },
+        pink: { dark: "#ff7ac6", greyDim: "#36232e", blackDim: "#24111c", light: "#b82c74", lightDim: "#f5eaef" }
+      };
+      var plAccent = localStorage.getItem("observec-accent") || "orange";
+      if (!plAccents[plAccent]) plAccent = "orange";
+      document.documentElement.dataset.accent = plAccent;
+      var plEntry = plAccents[plAccent];
+      var plIsWhite = plTheme === "white";
+      var plAcc = plIsWhite ? plEntry.light : plEntry.dark;
+      var plDim = plIsWhite ? plEntry.lightDim : (plTheme === "grey" ? plEntry.greyDim : plEntry.blackDim);
+      document.documentElement.style.setProperty("--acc", plAcc);
+      document.documentElement.style.setProperty("--acc-dim", plDim);
+      document.documentElement.style.setProperty("--primary", plAcc);
+      document.documentElement.style.setProperty("--success", plAcc);
     } catch (e) {}
   </script>
 </head>
@@ -56,14 +83,16 @@
 
     <span id="pl-count" class="text-muted log-count"></span>
 
-    <button type="button" class="icon-btn" id="pl-prev" title="Previous match (Shift+Enter)" disabled>
+    <button type="button" class="icon-btn" id="pl-prev" data-action-tip="Previous match (Shift+Enter)" disabled>
       <svg class="icon" viewBox="0 0 24 24"><path d="m18 15-6-6-6 6"/></svg>
     </button>
-    <button type="button" class="icon-btn" id="pl-next" title="Next match (Enter)" disabled>
+    <button type="button" class="icon-btn" id="pl-next" data-action-tip="Next match (Enter)" disabled>
       <svg class="icon" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg>
     </button>
 
-    <button type="button" class="btn ghost sm" id="pl-copy">Copy</button>
+    <button type="button" class="btn ghost icon-only" id="pl-copy" data-action-tip="Copy log" aria-label="Copy log">
+      <svg class="icon" viewBox="0 0 24 24"><rect width="14" height="14" x="8" y="8" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+    </button>
   </header>
 
   <main class="pl-body">
@@ -195,13 +224,50 @@
 
       $("pl-copy").addEventListener("click", function () {
         var btn = this;
+        var original = btn.innerHTML;
         navigator.clipboard.writeText(rawLines.join("\n"))
           .then(function () {
-            btn.textContent = "Copied";
-            setTimeout(function () { btn.textContent = "Copy"; }, 1500);
+            btn.innerHTML = '<svg class="icon" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg>';
+            setTimeout(function () { btn.innerHTML = original; }, 1500);
           })
-          .catch(function () { btn.textContent = "Copy failed"; });
+          .catch(function () {
+            btn.style.color = "var(--err)";
+            setTimeout(function () { btn.style.color = ""; }, 1500);
+          });
       });
+
+      var tipEl = null;
+      function hideTip() {
+        if (tipEl) tipEl.classList.remove("visible");
+      }
+      function showTip(anchor) {
+        var text = anchor && anchor.getAttribute("data-action-tip");
+        if (!text) return;
+        if (!tipEl) {
+          tipEl = document.createElement("div");
+          tipEl.className = "info-tip-float";
+          tipEl.setAttribute("role", "tooltip");
+          document.body.appendChild(tipEl);
+        }
+        tipEl.textContent = text;
+        tipEl.style.left = "0px";
+        tipEl.style.top = "0px";
+        tipEl.classList.add("visible");
+        var r = anchor.getBoundingClientRect();
+        var tw = tipEl.offsetWidth, th = tipEl.offsetHeight;
+        var top = r.top - th - 8;
+        if (top < 8) top = r.bottom + 8;
+        var left = Math.max(8, Math.min(r.left + r.width / 2 - tw / 2, window.innerWidth - tw - 8));
+        tipEl.style.left = left + "px";
+        tipEl.style.top = top + "px";
+      }
+      document.addEventListener("mouseover", function (e) {
+        var t = e.target && e.target.closest ? e.target.closest("[data-action-tip]") : null;
+        if (t) showTip(t);
+      });
+      document.addEventListener("mouseout", hideTip);
+      document.addEventListener("click", hideTip);
+      window.addEventListener("scroll", hideTip, true);
     })();
   </script>
 </body>
